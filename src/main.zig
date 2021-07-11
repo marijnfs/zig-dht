@@ -1,9 +1,11 @@
 const std = @import("std");
 
-const job = @import("job");
+const index = @import("index.zig");
 
 pub fn main() anyerror!void {
     std.log.info("All your codebase are belong to us.", .{});
 }
 
-test "job" {}
+test "job" {
+    var job = index.Job{ .connect = "sdf" };
+}
