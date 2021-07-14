@@ -36,7 +36,9 @@ pub const Job = union(enum) {
         // logger.log_fmt("run job: {}\n", .{self.*});
 
         switch (self.*) {
-            .connect => |address| {},
+            .connect => |address| {
+                std.log.info("Connect {s}", .{address});
+            },
         }
     }
 };
