@@ -3,7 +3,23 @@ const net = std.net;
 
 const index = @import("index.zig");
 
-var incomming_connections = index.AtomicQueue(net.Connection).init(index.allocator);
+var incomming_connections = std.ArrayList(net.StreamServer.Connection).init(index.allocator);
+var incomming_connection_frames = std.ArrayList(@Frame(connection_read_loop)).init(index.allocator);
+
+fn connection_read_loop(connection: net.StreamServer.Connection) !void {
+    defer connection.stream.close();
+    std.log.info("connection from {}", .{connection});
+    var buf: [100]u8 = undefined;
+
+    while (true) {
+        var frame = connection.stream.read(&buf);
+        var len = try frame;
+        // const len = try connection.stream.read(&buf);
+        std.log.info("read {s}", .{buf[0..len]});
+        if (len == 0)
+            break;
+    }
+}
 
 pub const Server = struct {
     config: Config,
@@ -20,18 +36,8 @@ pub const Server = struct {
         while (true) {
             var connection = try server.stream_server.accept();
 
-            defer connection.stream.close();
-            std.log.info("connection from {}", .{connection});
-            var buf: [100]u8 = undefined;
-
-            while (true) {
-                var frame = async connection.stream.read(&buf);
-                const len = try await frame;
-                // const len = try connection.stream.read(&buf);
-                std.log.info("read {s}", .{buf[0..len]});
-                if (len == 0)
-                    break;
-            }
+            try incomming_connections.append(connection);
+            try incomming_connection_frames.append(async connection_read_loop(connection));
 
             //time to schedule event loop to start connection
 
