@@ -1,6 +1,10 @@
 const std = @import("std");
 const net = std.net;
 
+const index = @import("index.zig");
+
+var incomming_connections = index.AtomicQueue(net.Connection).init(index.allocator);
+
 pub const Server = struct {
     config: Config,
     state: State = .Init,
@@ -15,6 +19,7 @@ pub const Server = struct {
     pub fn accept_loop(server: *Server) !void {
         while (true) {
             var connection = try server.stream_server.accept();
+
             defer connection.stream.close();
             std.log.info("connection from {}", .{connection});
             var buf: [100]u8 = undefined;
