@@ -12,13 +12,12 @@ fn server_thread_function() !void {
 
     try server.initialize();
 
-    // try server.accept_loop();
     try server.accept_loop();
 
     std.log.info("Accepting frame", .{});
 }
 
-pub fn main() anyerror!void {
+pub fn main() !void {
     std.log.info("Spawning Server Thread..", .{});
 
     var server_frame = async server_thread_function();

@@ -37,7 +37,9 @@ pub const Server = struct {
             var connection = try server.stream_server.accept();
 
             try incomming_connections.append(connection);
-            try incomming_connection_frames.append(async connection_read_loop(connection));
+            var frame: @Frame(connection_read_loop) = undefined;
+            try incomming_connection_frames.append(frame);
+            incomming_connection_frames.items[incomming_connection_frames.items.len - 1] = async connection_read_loop(connection);
 
             //time to schedule event loop to start connection
 
