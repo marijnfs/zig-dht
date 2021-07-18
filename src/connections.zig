@@ -30,6 +30,8 @@ fn connection_read_loop(connection: net.StreamServer.Connection) !void {
         var len = try frame;
         // const len = try connection.stream.read(&buf);
         std.log.info("read {s}", .{buf[0..len]});
+        try index.job.enqueue(.{ .message = try std.mem.dupe(index.allocator, u8, buf[0..len]) });
+
         if (len == 0)
             break;
     }
@@ -42,6 +44,7 @@ pub const Server = struct {
 
     pub fn initialize(server: *Server) !void {
         server.stream_server = net.StreamServer.init(net.StreamServer.Options{});
+        std.log.info("Connecting to {s}:{}", .{ server.config.name, server.config.port });
         const localhost = try net.Address.parseIp(server.config.name, server.config.port);
         try server.stream_server.listen(localhost);
     }

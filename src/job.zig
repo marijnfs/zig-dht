@@ -19,7 +19,7 @@ pub fn job_loop() void {
             };
         } else {
             //sleep
-            std.os.nanosleep(1, 1000000);
+            std.os.nanosleep(0, 1000000);
         }
     }
 }
@@ -30,6 +30,7 @@ const Address = []u8;
 
 pub const Job = union(enum) {
     connect: Address,
+    message: []u8,
 
     fn work(self: *Job) !void {
 
@@ -38,6 +39,9 @@ pub const Job = union(enum) {
         switch (self.*) {
             .connect => |address| {
                 std.log.info("Connect {s}", .{address});
+            },
+            .message => |message| {
+                std.log.info("Got message {s}", .{message});
             },
         }
     }

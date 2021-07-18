@@ -8,10 +8,10 @@ var server: index.Server = undefined;
 // var server_thread: std.Thread = undefined;
 
 fn server_thread_function() !void {
-    server = index.Server{ .config = .{ .name = try std.mem.dupe(index.allocator, u8, "127.0.0.1"), .port = 30011 } };
+    server = index.Server{ .config = .{ .name = try std.mem.dupe(index.allocator, u8, "127.0.0.1"), .port = 30015 } };
 
     try server.initialize();
-
+    defer server.deinit();
     try server.accept_loop();
 
     std.log.info("Accepting frame", .{});
@@ -22,9 +22,10 @@ pub fn main() !void {
 
     var server_frame = async server_thread_function();
 
-    std.log.info("Starting loop", .{});
+    std.log.info("Starting Job loop", .{});
     index.job.job_loop();
     std.log.info("Done", .{});
+
     try await server_frame;
 }
 
