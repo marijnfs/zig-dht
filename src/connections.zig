@@ -3,13 +3,27 @@ const net = std.net;
 
 const index = @import("index.zig");
 
-var incomming_connections = std.ArrayList(net.StreamServer.Connection).init(index.allocator);
-var incomming_connection_frames = std.ArrayList(@Frame(connection_read_loop)).init(index.allocator);
+var incomming_connections = std.AutoHashMap(*Connection, void).init(index.allocator);
+
+pub const Connection = struct {
+    stream_connection: net.StreamServer.Connection,
+    state: State = .Connected,
+    frame: @Frame(connection_read_loop),
+
+    const State = enum {
+        Connected,
+        Disconnected,
+    };
+};
 
 fn connection_read_loop(connection: net.StreamServer.Connection) !void {
     defer connection.stream.close();
     std.log.info("connection from {}", .{connection});
     var buf: [100]u8 = undefined;
+
+    defer {
+        std.log.info("disconnected {}", .{connection});
+    }
 
     while (true) {
         var frame = connection.stream.read(&buf);
@@ -34,13 +48,12 @@ pub const Server = struct {
 
     pub fn accept_loop(server: *Server) !void {
         while (true) {
-            var connection = try server.stream_server.accept();
-
-            try incomming_connections.append(connection);
-            var frame: @Frame(connection_read_loop) = undefined;
-            try incomming_connection_frames.append(frame);
-            incomming_connection_frames.items[incomming_connection_frames.items.len - 1] = async connection_read_loop(connection);
-
+            var stream_connection = try server.stream_server.accept();
+            var connection = try index.allocator.create(Connection); //append the frame before assigning to it, it can't move in Memory
+            // TODO, appending to arraylist can actually move other frames if arraylist needs to relocate
+            connection.stream_connection = stream_connection;
+            connection.frame = async connection_read_loop(stream_connection);
+            try incomming_connections.putNoClobber(connection, {});
             //time to schedule event loop to start connection
 
         }
@@ -58,7 +71,6 @@ pub const Server = struct {
     const State = enum {
         Init,
         Ready,
-        Done,
         Error,
     };
 };
