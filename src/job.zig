@@ -28,9 +28,14 @@ pub fn job_loop() void {
 // Main application logic
 const Address = []u8;
 
+const SendMessage = struct {
+    guid: u64,
+    message: []u8,
+};
+
 pub const Job = union(enum) {
     connect: Address,
-    message: []u8,
+    message: SendMessage,
 
     fn work(self: *Job) !void {
 

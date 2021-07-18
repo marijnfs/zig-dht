@@ -9,3 +9,4 @@ const std = @import("std");
 pub const allocator = std.heap.page_allocator;
 
 pub const job = @import("job.zig");
+pub const get_guid = @import("utils.zig").get_guid;

@@ -3,34 +3,42 @@ const net = std.net;
 
 const index = @import("index.zig");
 
+const READ_BUF_SIZE = 1024 * 128; //128 kb
+
 var incomming_connections = std.AutoHashMap(*Connection, void).init(index.allocator);
 
 pub const Connection = struct {
     stream_connection: net.StreamServer.Connection,
     state: State = .Connected,
     frame: @Frame(connection_read_loop),
+    guid: u64 = 0,
 
     const State = enum {
         Connected,
         Disconnected,
     };
+
+    fn write(connection: *Connection, buf: []u8) !void {
+        try connection.stream_connection.write(buf);
+    }
 };
 
-fn connection_read_loop(connection: net.StreamServer.Connection) !void {
-    defer connection.stream.close();
-    std.log.info("connection from {}", .{connection});
-    var buf: [100]u8 = undefined;
+fn connection_read_loop(connection: *Connection) !void {
+    const stream_connection = connection.stream_connection;
+    defer stream_connection.stream.close();
+    std.log.info("connection from {}", .{stream_connection.address});
+    var buf: [READ_BUF_SIZE]u8 = undefined;
 
     defer {
-        std.log.info("disconnected {}", .{connection});
+        std.log.info("disconnected {}", .{stream_connection});
+        connection.state = .Disconnected;
     }
 
     while (true) {
-        var frame = connection.stream.read(&buf);
+        var frame = stream_connection.stream.read(&buf);
         var len = try frame;
-        // const len = try connection.stream.read(&buf);
         std.log.info("read {s}", .{buf[0..len]});
-        try index.job.enqueue(.{ .message = try std.mem.dupe(index.allocator, u8, buf[0..len]) });
+        try index.job.enqueue(.{ .message = .{ .guid = connection.guid, .message = try std.mem.dupe(index.allocator, u8, buf[0..len]) } });
 
         if (len == 0)
             break;
@@ -55,7 +63,8 @@ pub const Server = struct {
             var connection = try index.allocator.create(Connection); //append the frame before assigning to it, it can't move in Memory
             // TODO, appending to arraylist can actually move other frames if arraylist needs to relocate
             connection.stream_connection = stream_connection;
-            connection.frame = async connection_read_loop(stream_connection);
+            connection.frame = async connection_read_loop(connection);
+            connection.guid = index.get_guid();
             try incomming_connections.putNoClobber(connection, {});
             //time to schedule event loop to start connection
 
