@@ -2,6 +2,7 @@
 
 pub const Job = @import("job.zig").Job;
 pub const Server = @import("connections.zig").Server;
+pub const connect_and_add = @import("connections.zig").connect_and_add;
 pub const AtomicQueue = @import("queue.zig").AtomicQueue;
 
 const std = @import("std");
@@ -10,3 +11,7 @@ pub const allocator = std.heap.page_allocator;
 
 pub const job = @import("job.zig");
 pub const get_guid = @import("utils.zig").get_guid;
+
+// Common types
+const ID_SIZE = 32;
+pub const ID = [ID_SIZE]u8;

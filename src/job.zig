@@ -26,7 +26,6 @@ pub fn job_loop() void {
 
 // Jobs
 // Main application logic
-const Address = []u8;
 
 const SendMessage = struct {
     guid: u64,
@@ -34,7 +33,7 @@ const SendMessage = struct {
 };
 
 pub const Job = union(enum) {
-    connect: Address,
+    connect: std.net.Address,
     message: SendMessage,
 
     fn work(self: *Job) !void {
@@ -44,6 +43,7 @@ pub const Job = union(enum) {
         switch (self.*) {
             .connect => |address| {
                 std.log.info("Connect {s}", .{address});
+                try index.connect_and_add(address);
             },
             .message => |message| {
                 std.log.info("Got message {s}", .{message});
