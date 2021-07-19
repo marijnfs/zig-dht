@@ -27,14 +27,15 @@ pub fn job_loop() void {
 // Jobs
 // Main application logic
 
-const SendMessage = struct {
+const Message = struct {
     guid: u64,
-    message: []u8,
+    data: []u8,
 };
 
 pub const Job = union(enum) {
     connect: std.net.Address,
-    message: SendMessage,
+    send_message: Message,
+    process_message: Message,
 
     fn work(self: *Job) !void {
 
@@ -45,8 +46,33 @@ pub const Job = union(enum) {
                 std.log.info("Connect {s}", .{address});
                 try index.connect_and_add(address);
             },
-            .message => |message| {
-                std.log.info("Got message {s}", .{message});
+            .send_message => |message| {
+                const guid = message.guid;
+                // first find the ingoing or outgoing connection
+                var in_it = index.connections.incoming_connections.keyIterator();
+                while (in_it.next()) |connection| {
+                    if (connection.*.guid == guid) {
+                        try connection.*.write(message.data);
+                        break;
+                    }
+                }
+
+                var out_it = index.connections.outgoing_connections.keyIterator();
+                while (out_it.next()) |connection| {
+                    if (connection.*.guid == guid) {
+                        try connection.*.write(message.data);
+                        break;
+                    }
+                }
+
+                std.log.info("Wrote message {s}", .{message});
+            },
+            .process_message => |message| {
+                if (index.connections.route_guid(message.guid)) |connection_guid| {
+                    try enqueue(.{ .send_message = .{ .guid = connection_guid, .data = message.data } });
+                } else {
+                    std.log.info("Failed to process message", .{});
+                }
             },
         }
     }

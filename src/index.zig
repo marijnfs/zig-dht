@@ -1,8 +1,9 @@
 // Index file that includes the individual classes etc. that are used throughout the software.
 
 pub const Job = @import("job.zig").Job;
-pub const Server = @import("connections.zig").Server;
-pub const connect_and_add = @import("connections.zig").connect_and_add;
+pub const connections = @import("connections.zig");
+pub const Server = connections.Server;
+pub const connect_and_add = connections.connect_and_add;
 pub const AtomicQueue = @import("queue.zig").AtomicQueue;
 
 const std = @import("std");
