@@ -8,6 +8,10 @@ const READ_BUF_SIZE = 1024 * 128; //128 kb
 var incoming_connections = std.AutoHashMap(*InConnection, void).init(index.allocator);
 var outgoing_connections = std.AutoHashMap(*OutConnection, void).init(index.allocator);
 
+// router map, mapping message GUIDs to connection GUIDs
+// both for incoming and outgoing connections.
+var connection_router = std.AutoHashMap(u64, u64).init(index.allocator);
+
 pub const InConnection = struct {
     stream_connection: net.StreamServer.Connection,
     state: State = .Connected,
@@ -19,7 +23,7 @@ pub const InConnection = struct {
         Disconnected,
     };
 
-    fn write(connection: *Connection, buf: []u8) !void {
+    fn write(connection: *InConnection, buf: []u8) !void {
         try connection.stream_connection.write(buf);
     }
 
@@ -37,7 +41,9 @@ pub const InConnection = struct {
         while (true) {
             var len = try stream_connection.stream.read(&buf);
             std.log.info("read {s}", .{buf[0..len]});
-            try index.job.enqueue(.{ .message = .{ .guid = connection.guid, .message = try std.mem.dupe(index.allocator, u8, buf[0..len]) } });
+            const guid = index.get_guid();
+            try connection_router.put(guid, connection.guid);
+            try index.job.enqueue(.{ .message = .{ .guid = guid, .message = try std.mem.dupe(index.allocator, u8, buf[0..len]) } });
 
             if (len == 0)
                 break;
@@ -57,6 +63,10 @@ pub const OutConnection = struct {
         Disconnected,
     };
 
+    fn write(connection: *InConnection, buf: []u8) !void {
+        try connection.stream_connection.write(buf);
+    }
+
     fn connection_read_loop(connection: *OutConnection) !void {
         defer connection.stream_connection.close();
         std.log.info("connection to {}", .{connection.address});
@@ -70,7 +80,9 @@ pub const OutConnection = struct {
         while (true) {
             var len = try connection.stream_connection.read(&buf);
             std.log.info("read {s}", .{buf[0..len]});
-            try index.job.enqueue(.{ .message = .{ .guid = connection.guid, .message = try std.mem.dupe(index.allocator, u8, buf[0..len]) } });
+            const guid = index.get_guid();
+            try connection_router.put(guid, connection.guid);
+            try index.job.enqueue(.{ .message = .{ .guid = guid, .message = try std.mem.dupe(index.allocator, u8, buf[0..len]) } });
 
             if (len == 0)
                 break;
@@ -106,9 +118,11 @@ pub const Server = struct {
             var stream_connection = try server.stream_server.accept();
             var connection = try index.allocator.create(InConnection); //append the frame before assigning to it, it can't move in Memory
             // TODO, appending to arraylist can actually move other frames if arraylist needs to relocate
-            connection.stream_connection = stream_connection;
+            connection.* = .{
+                .stream_connection = stream_connection,
+                .guid = index.get_guid(),
+            };
             connection.frame = async connection.connection_read_loop();
-            connection.guid = index.get_guid();
             try incoming_connections.putNoClobber(connection, {});
             //time to schedule event loop to start connection
 
