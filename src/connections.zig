@@ -15,7 +15,7 @@ var connection_router = std.AutoHashMap(u64, u64).init(index.allocator);
 pub const InConnection = struct {
     stream_connection: net.StreamServer.Connection,
     state: State = .Connected,
-    frame: @Frame(connection_read_loop),
+    frame: @Frame(connection_read_loop) = undefined,
     guid: u64 = 0,
 
     const State = enum {
