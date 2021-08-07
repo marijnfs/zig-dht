@@ -71,7 +71,7 @@ pub fn deserialise(comptime T: type, msg: *[]u8) !T {
                 break :blk @intToEnum(T, @intCast(std.meta.TagType(T), int_operand));
             };
         },
-        .Int => {
+        .Int, .Float => {
             const bytes_mem = std.mem.asBytes(&t);
             if (bytes_mem.len > msg.len)
                 return error.FailedToDeserialise;
@@ -128,6 +128,7 @@ pub fn serialise_to_buffer(t: anytype, buf: *std.ArrayList(u8)) !void {
                 const active_tag = std.meta.activeTag(t);
                 try serialise_to_buffer(@as(std.meta.TagType(T), active_tag), buf);
 
+                // This manual inline loop is currently needed to find the right 'field' for the union
                 inline for (info.Union.fields) |field_info| {
                     if (@field(TagType, field_info.name) == active_tag) {
                         const name = field_info.name;
@@ -142,7 +143,7 @@ pub fn serialise_to_buffer(t: anytype, buf: *std.ArrayList(u8)) !void {
         .Enum => {
             try buf.appendSlice(std.mem.asBytes(&t));
         },
-        .Int => {
+        .Int, .Float => {
             try buf.appendSlice(std.mem.asBytes(&t));
         },
         .Optional => {
@@ -164,10 +165,13 @@ test "bla" {
     const T = struct {
         a: i64 = 1024,
         b: []i64,
+        c: ?i64,
+        d: ?i64,
+        e: f64 = 6,
     };
 
     var x = [_]i64{ 1, 2, 3, 4, 5, 6 };
-    var t = T{ .b = &x };
+    var t = T{ .b = &x, .c = 42, .d = null };
 
     var buf = std.ArrayList(u8).init(allocator);
     var msg = serialise_to_buffer(t, &buf);
@@ -179,4 +183,8 @@ test "bla" {
 
     try expect(t.a == t2.a);
     try expect(std.mem.eql(i64, t.b, t2.b));
+    try expect(t.c.? == t2.c.?);
+    try expect(t.d == null);
+    try expect(t2.d == null);
+    try expect(t.e == t2.e);
 }
