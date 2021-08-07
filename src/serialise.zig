@@ -50,6 +50,8 @@ pub fn deserialise(comptime T: type, msg: *[]u8) !T {
         .Union => {
             if (comptime info.Union.tag_type) |TagType| {
                 const active_tag = try deserialise(TagType, msg);
+                std.log.info("Deserialise: {} {}", .{ @as(std.meta.TagType(T), active_tag), TagType });
+
                 inline for (info.Union.fields) |field_info| {
                     if (@field(TagType, field_info.name) == active_tag) {
                         const name = field_info.name;
@@ -126,6 +128,7 @@ pub fn serialise_to_buffer(t: anytype, buf: *std.ArrayList(u8)) !void {
         .Union => {
             if (info.Union.tag_type) |TagType| {
                 const active_tag = std.meta.activeTag(t);
+                std.log.info("{} {}", .{ @as(std.meta.TagType(T), active_tag), TagType });
                 try serialise_to_buffer(@as(std.meta.TagType(T), active_tag), buf);
 
                 // This manual inline loop is currently needed to find the right 'field' for the union
@@ -141,7 +144,7 @@ pub fn serialise_to_buffer(t: anytype, buf: *std.ArrayList(u8)) !void {
             }
         },
         .Enum => {
-            try buf.appendSlice(std.mem.asBytes(&t));
+            try serialise_to_buffer(@intCast(i32, @enumToInt(t)), buf);
         },
         .Int, .Float => {
             try buf.appendSlice(std.mem.asBytes(&t));
@@ -161,7 +164,7 @@ pub fn serialise_to_buffer(t: anytype, buf: *std.ArrayList(u8)) !void {
 }
 
 const expect = std.testing.expect;
-test "bla" {
+test "regular struct" {
     const T = struct {
         a: i64 = 1024,
         b: []i64,
@@ -174,9 +177,8 @@ test "bla" {
     var t = T{ .b = &x, .c = 42, .d = null };
 
     var buf = std.ArrayList(u8).init(allocator);
-    var msg = serialise_to_buffer(t, &buf);
+    try serialise_to_buffer(t, &buf);
 
-    std.log.info("{}", .{msg});
     var slice = buf.toOwnedSlice();
     var t2 = try deserialise(T, &slice);
     std.log.info("{}", .{t2});
@@ -187,4 +189,21 @@ test "bla" {
     try expect(t.d == null);
     try expect(t2.d == null);
     try expect(t.e == t2.e);
+}
+
+test "union" {
+    const UnionEnum = union(enum) {
+        int: i64,
+        float: f32,
+    };
+
+    var x = UnionEnum{ .int = 32 };
+    // var y = UnionEnum{ .float = 42.42 };
+
+    var buf = std.ArrayList(u8).init(allocator);
+    try serialise_to_buffer(x, &buf);
+    var slice = buf.toOwnedSlice();
+    var x_2 = try deserialise(UnionEnum, &slice);
+
+    try expect(x.int == x_2.int);
 }
