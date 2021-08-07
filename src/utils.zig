@@ -20,7 +20,7 @@ pub fn get_guid() u64 {
     return val;
 }
 
-fn get_finger_id(id: ID, bit: usize) ID {
+pub fn get_finger_id(id: ID, bit: usize) ID {
     // 256 bits = 64 bytes
     // We find the index in the byte (bit_id)
     // We find the byte (byte_id)
@@ -51,4 +51,10 @@ pub fn rand_id() ID {
     var id: ID = undefined;
     std.crypto.random.bytes(&id);
     return id;
+}
+
+pub fn calculate_hash(data: []const u8) ID {
+    var result: ID = undefined;
+    std.crypto.hash.Blake3.hash(data, result[0..], .{});
+    return result;
 }
