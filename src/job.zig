@@ -79,12 +79,15 @@ pub const Job = union(enum) {
 
                         std.log.info("Wrote message {s}", .{message});
                     },
-                    .id => |id| {},
+                    .id => |id| {
+                        std.log.info("uninplemented routing {any}", .{id});
+                    },
                 }
             },
             .process_message => |message| {
                 var data_slice = message.data;
                 var content = try index.serialise.deserialise(index.Content, &data_slice);
+                std.log.info("process message: {any}", .{content});
             },
         }
     }
