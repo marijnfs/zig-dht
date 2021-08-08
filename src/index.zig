@@ -15,7 +15,7 @@ pub const utils = @import("utils.zig");
 pub const get_guid = utils.get_guid;
 pub const calculate_hash = utils.calculate_hash;
 
-pub const Content = @import("content.zig").Content;
+pub const Data = @import("data.zig").Data;
 
 // Common types
 const ID_SIZE = 32;

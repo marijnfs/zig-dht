@@ -12,7 +12,7 @@ pub var outgoing_connections = std.AutoHashMap(*OutConnection, void).init(index.
 // both for incoming and outgoing connections.
 var connection_router = std.AutoHashMap(index.ID, u64).init(index.allocator);
 
-pub fn route_guid(hash: index.ID) ?u64 {
+pub fn route_hash(hash: index.ID) ?u64 {
     return connection_router.get(hash);
 }
 
