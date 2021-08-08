@@ -24,8 +24,8 @@ pub fn deserialise(comptime T: type, msg: *[]u8) !T {
                 return error.MsgSmallerThanArray;
             }
 
-            std.mem.copy(u8, std.mem.asBytes(&t), msg);
-            msg = msg[@sizeOf(T)..];
+            std.mem.copy(u8, std.mem.asBytes(&t), msg.*);
+            msg.* = msg.*[byteSize..];
         },
         .Pointer => {
             if (comptime std.meta.trait.isSlice(T)) {
@@ -181,7 +181,6 @@ test "regular struct" {
 
     var slice = buf.toOwnedSlice();
     var t2 = try deserialise(T, &slice);
-    std.log.info("{}", .{t2});
 
     try expect(t.a == t2.a);
     try expect(std.mem.eql(i64, t.b, t2.b));

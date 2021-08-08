@@ -10,9 +10,9 @@ pub var outgoing_connections = std.AutoHashMap(*OutConnection, void).init(index.
 
 // router map, mapping message GUIDs to connection GUIDs
 // both for incoming and outgoing connections.
-var connection_router = std.AutoHashMap(u64, u64).init(index.allocator);
+var connection_router = std.AutoHashMap(index.ID, u64).init(index.allocator);
 
-pub fn route_guid(guid: u64) ?u64 {
+pub fn route_guid(hash: index.ID) ?u64 {
     return connection_router.get(guid);
 }
 
@@ -21,6 +21,7 @@ pub const InConnection = struct {
     state: State = .Connected,
     frame: @Frame(connection_read_loop) = undefined,
     guid: u64 = 0,
+    id: index.ID = std.mem.zeroes(index.ID),
 
     const State = enum {
         Connected,
@@ -47,9 +48,9 @@ pub const InConnection = struct {
         while (true) {
             var len = try stream_connection.stream.read(&buf);
             std.log.info("read {s}", .{buf[0..len]});
-            const guid = index.get_guid();
-            try connection_router.put(guid, connection.guid);
-            try index.job.enqueue(.{ .process_message = .{ .guid = guid, .data = try std.mem.dupe(index.allocator, u8, buf[0..len]) } });
+            const hash = index.calculate_hash(buf[0..len]);
+            try connection_router.put(hash, connection.guid);
+            try index.job.enqueue(.{ .process_message = .{ .hash = hash, .data = try std.mem.dupe(index.allocator, u8, buf[0..len]) } });
 
             if (len == 0)
                 break;
@@ -63,6 +64,7 @@ pub const OutConnection = struct {
     frame: @Frame(connection_read_loop) = undefined,
     guid: u64 = 0,
     address: net.Address,
+    id: index.ID = std.mem.zeroes(index.ID),
 
     const State = enum {
         Connected,
@@ -88,9 +90,9 @@ pub const OutConnection = struct {
         while (true) {
             var len = try connection.stream_connection.read(&buf);
             std.log.info("read {s}", .{buf[0..len]});
-            const guid = index.get_guid();
-            try connection_router.put(guid, connection.guid);
-            try index.job.enqueue(.{ .process_message = .{ .guid = guid, .data = try std.mem.dupe(index.allocator, u8, buf[0..len]) } });
+            const hash = index.calculate_hash(buf[0..len]);
+            try connection_router.put(hash, connection.guid);
+            try index.job.enqueue(.{ .process_message = .{ .hash = hash, .data = try std.mem.dupe(index.allocator, u8, buf[0..len]) } });
 
             if (len == 0)
                 break;

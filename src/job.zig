@@ -28,13 +28,21 @@ pub fn job_loop() void {
 // Main application logic
 
 const Message = struct {
-    guid: u64,
+    hash: index.ID,
     data: []u8,
+};
+
+const Envelope = struct {
+    target: union(enum) {
+        guid: u64,
+        id: index.ID,
+    }, //target output node
+    message: Message,
 };
 
 pub const Job = union(enum) {
     connect: std.net.Address,
-    send_message: Message,
+    send_message: Envelope,
     process_message: Message,
 
     fn work(self: *Job) !void {
@@ -46,33 +54,37 @@ pub const Job = union(enum) {
                 std.log.info("Connect {s}", .{address});
                 try index.connect_and_add(address);
             },
-            .send_message => |message| {
-                const guid = message.guid;
-                // first find the ingoing or outgoing connection
-                var in_it = index.connections.incoming_connections.keyIterator();
-                while (in_it.next()) |connection| {
-                    if (connection.*.guid == guid) {
-                        try connection.*.write(message.data);
-                        break;
-                    }
-                }
+            // Multi function send message,
+            // both for incoming and outgoing messages
+            .send_message => |envelope| {
+                const message = envelope.message;
+                switch (envelope.target) {
+                    .guid => |guid| {
+                        // first find the ingoing or outgoing connection
+                        var in_it = index.connections.incoming_connections.keyIterator();
+                        while (in_it.next()) |connection| {
+                            if (connection.*.guid == guid) {
+                                try connection.*.write(message.data);
+                                break;
+                            }
+                        }
 
-                var out_it = index.connections.outgoing_connections.keyIterator();
-                while (out_it.next()) |connection| {
-                    if (connection.*.guid == guid) {
-                        try connection.*.write(message.data);
-                        break;
-                    }
-                }
+                        var out_it = index.connections.outgoing_connections.keyIterator();
+                        while (out_it.next()) |connection| {
+                            if (connection.*.guid == guid) {
+                                try connection.*.write(message.data);
+                                break;
+                            }
+                        }
 
-                std.log.info("Wrote message {s}", .{message});
+                        std.log.info("Wrote message {s}", .{message});
+                    },
+                    .id => |id| {},
+                }
             },
             .process_message => |message| {
-                if (index.connections.route_guid(message.guid)) |connection_guid| {
-                    try enqueue(.{ .send_message = .{ .guid = connection_guid, .data = message.data } });
-                } else {
-                    std.log.info("Failed to process message", .{});
-                }
+                var data_slice = message.data;
+                var content = try index.serialise.deserialise(index.Content, &data_slice);
             },
         }
     }
