@@ -58,3 +58,7 @@ pub fn calculate_hash(data: []const u8) ID {
     std.crypto.hash.Blake3.hash(data, result[0..], .{});
     return result;
 }
+
+pub fn id_is_zero(id: ID) bool {
+    return std.mem.eql(u8, &id, &std.mem.zeroes(ID));
+}

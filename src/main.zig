@@ -4,15 +4,12 @@ const std = @import("std");
 
 const index = @import("index.zig");
 
-var server: index.Server = undefined;
-// var server_thread: std.Thread = undefined;
-
 fn server_thread_function() !void {
-    server = index.Server{ .config = .{ .name = try std.mem.dupe(index.allocator, u8, "127.0.0.1"), .port = 30015 } };
+    index.server = index.Server{ .config = .{ .name = try std.mem.dupe(index.allocator, u8, "127.0.0.1"), .port = 30015 } };
 
-    try server.initialize();
-    defer server.deinit();
-    try server.accept_loop();
+    try index.server.initialize();
+    defer index.server.deinit();
+    try index.server.accept_loop();
 
     std.log.info("Accepting frame", .{});
 }

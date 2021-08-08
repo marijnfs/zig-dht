@@ -4,6 +4,7 @@
 
 const std = @import("std");
 const index = @import("index.zig");
+const utils = index.utils;
 var job_queue = index.AtomicQueue(Job).init(index.allocator);
 
 pub fn enqueue(job: Job) !void {
@@ -80,7 +81,26 @@ pub const Job = union(enum) {
                         std.log.info("Wrote message {s}", .{message});
                     },
                     .id => |id| {
-                        std.log.info("uninplemented routing {any}", .{id});
+                        var out_it = index.connections.outgoing_connections.keyIterator();
+
+                        var best_connection: ?*index.connections.OutConnection = null;
+                        var lowest_dist = std.mem.zeroes(index.ID);
+                        while (out_it.next()) |connection| {
+                            if (utils.id_is_zero(connection.*.id))
+                                continue;
+
+                            const dist = utils.xor(connection.*.id, index.server.id);
+                            if (utils.id_is_zero(lowest_dist) or utils.less(dist, lowest_dist)) {
+                                lowest_dist = dist;
+                                best_connection = connection.*;
+                            }
+                        }
+
+                        if (best_connection) |connection| {
+                            try connection.*.write(message.data);
+                        } else {
+                            std.log.info("Couldn't route {any}", .{id});
+                        }
                     },
                 }
             },

@@ -115,15 +115,22 @@ pub const Server = struct {
     config: Config,
     state: State = .Init,
     stream_server: net.StreamServer = undefined,
+    id: index.ID = std.mem.zeroes(index.ID),
 
     pub fn initialize(server: *Server) !void {
         server.stream_server = net.StreamServer.init(net.StreamServer.Options{});
         std.log.info("Connecting to {s}:{}", .{ server.config.name, server.config.port });
         const localhost = try net.Address.parseIp(server.config.name, server.config.port);
         try server.stream_server.listen(localhost);
+
+        server.id = index.utils.rand_id();
     }
 
     pub fn accept_loop(server: *Server) !void {
+        server.state = .Ready;
+        errdefer {
+            server.state = .Error;
+        }
         while (true) {
             var stream_connection = try server.stream_server.accept();
             var connection = try index.allocator.create(InConnection); //append the frame before assigning to it, it can't move in Memory
