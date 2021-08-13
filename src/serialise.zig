@@ -1,5 +1,5 @@
 const std = @import("std");
-const allocator = @import("index.zig").allocator;
+const allocator = @import("index.zig").default.allocator;
 
 pub fn deserialise(comptime T: type, msg: *[]u8) !T {
     var t: T = undefined;
