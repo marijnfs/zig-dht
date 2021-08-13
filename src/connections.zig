@@ -1,18 +1,11 @@
 const std = @import("std");
 const net = std.net;
 
-const index = @import("index.zig");
+usingnamespace @import("index.zig");
 
 const READ_BUF_SIZE = 1024 * 128; //128 kb
 
-pub var incoming_connections = std.AutoHashMap(*InConnection, void).init(index.allocator);
-pub var outgoing_connections = std.AutoHashMap(*OutConnection, void).init(index.allocator);
-
-// router map, mapping message GUIDs to connection GUIDs
-// both for incoming and outgoing connections.
-var connection_router = std.AutoHashMap(index.ID, u64).init(index.allocator);
-
-pub fn route_hash(hash: index.ID) ?u64 {
+pub fn route_hash(hash: ID) ?u64 {
     return connection_router.get(hash);
 }
 
@@ -21,7 +14,7 @@ pub const InConnection = struct {
     state: State = .Connected,
     frame: @Frame(connection_read_loop) = undefined,
     guid: u64 = 0,
-    id: index.ID = std.mem.zeroes(index.ID),
+    id: ID = std.mem.zeroes(ID),
 
     const State = enum {
         Connected,
@@ -34,7 +27,7 @@ pub const InConnection = struct {
             return error.WriteError;
     }
 
-    fn connection_read_loop(connection: *InConnection) !void {
+    pub fn connection_read_loop(connection: *InConnection) !void {
         const stream_connection = connection.stream_connection;
         defer stream_connection.stream.close();
         std.log.info("connection from {}", .{stream_connection.address});
@@ -48,9 +41,9 @@ pub const InConnection = struct {
         while (true) {
             var len = try stream_connection.stream.read(&buf);
             std.log.info("read {s}", .{buf[0..len]});
-            const hash = index.calculate_hash(buf[0..len]);
-            try connection_router.put(hash, connection.guid);
-            try index.job.enqueue(.{ .process_message = .{ .hash = hash, .data = try std.mem.dupe(index.allocator, u8, buf[0..len]) } });
+            const hash = utils.calculate_hash(buf[0..len]);
+            try default.server.connection_router.put(hash, connection.guid);
+            try jobs.enqueue(.{ .process_message = .{ .hash = hash, .data = try std.mem.dupe(default.allocator, u8, buf[0..len]) } });
 
             if (len == 0)
                 break;
@@ -64,7 +57,7 @@ pub const OutConnection = struct {
     frame: @Frame(connection_read_loop) = undefined,
     guid: u64 = 0,
     address: net.Address,
-    id: index.ID = std.mem.zeroes(index.ID),
+    id: ID = std.mem.zeroes(ID),
 
     const State = enum {
         Connected,
@@ -77,7 +70,7 @@ pub const OutConnection = struct {
             return error.WriteError;
     }
 
-    fn connection_read_loop(connection: *OutConnection) !void {
+    pub fn connection_read_loop(connection: *OutConnection) !void {
         defer connection.stream_connection.close();
         std.log.info("connection to {}", .{connection.address});
         var buf: [READ_BUF_SIZE]u8 = undefined;
@@ -90,74 +83,12 @@ pub const OutConnection = struct {
         while (true) {
             var len = try connection.stream_connection.read(&buf);
             std.log.info("read {s}", .{buf[0..len]});
-            const hash = index.calculate_hash(buf[0..len]);
-            try connection_router.put(hash, connection.guid);
-            try index.job.enqueue(.{ .process_message = .{ .hash = hash, .data = try std.mem.dupe(index.allocator, u8, buf[0..len]) } });
+            const hash = utils.calculate_hash(buf[0..len]);
+            try default.server.connection_router.put(hash, connection.guid);
+            try jobs.enqueue(.{ .process_message = .{ .hash = hash, .data = try std.mem.dupe(default.allocator, u8, buf[0..len]) } });
 
             if (len == 0)
                 break;
         }
     }
-};
-
-pub fn connect_and_add(address: net.Address) !void {
-    var out_connection = try index.allocator.create(OutConnection);
-    out_connection.* = .{
-        .address = address,
-        .stream_connection = try net.tcpConnectToAddress(address),
-        .guid = index.get_guid(),
-    };
-    out_connection.frame = async out_connection.connection_read_loop();
-    try outgoing_connections.putNoClobber(out_connection, {});
-}
-
-pub const Server = struct {
-    config: Config,
-    state: State = .Init,
-    stream_server: net.StreamServer = undefined,
-    id: index.ID = std.mem.zeroes(index.ID),
-
-    pub fn initialize(server: *Server) !void {
-        server.stream_server = net.StreamServer.init(net.StreamServer.Options{});
-        std.log.info("Connecting to {s}:{}", .{ server.config.name, server.config.port });
-        const localhost = try net.Address.parseIp(server.config.name, server.config.port);
-        try server.stream_server.listen(localhost);
-
-        server.id = index.utils.rand_id();
-    }
-
-    pub fn accept_loop(server: *Server) !void {
-        server.state = .Ready;
-        errdefer {
-            server.state = .Error;
-        }
-        while (true) {
-            var stream_connection = try server.stream_server.accept();
-            var connection = try index.allocator.create(InConnection); //append the frame before assigning to it, it can't move in Memory
-            // TODO, appending to arraylist can actually move other frames if arraylist needs to relocate
-            connection.* = .{
-                .stream_connection = stream_connection,
-                .guid = index.get_guid(),
-            };
-            connection.frame = async connection.connection_read_loop();
-            try incoming_connections.putNoClobber(connection, {});
-            //time to schedule event loop to start connection
-
-        }
-    }
-
-    pub fn deinit(server: *Server) void {
-        server.stream_server.deinit();
-    }
-
-    const Config = struct {
-        name: []u8,
-        port: u16,
-    };
-
-    const State = enum {
-        Init,
-        Ready,
-        Error,
-    };
 };

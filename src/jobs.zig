@@ -3,9 +3,8 @@
 // These Jobs form the main synchronising organising principle. Jobs can do complex tasks as they are guaranteed to operate alone.
 
 const std = @import("std");
-const index = @import("index.zig");
-const utils = index.utils;
-var job_queue = index.AtomicQueue(Job).init(index.allocator);
+usingnamespace @import("index.zig");
+var job_queue = AtomicQueue(Job).init(default.allocator);
 
 pub fn enqueue(job: Job) !void {
     // logger.log_fmt("queuing job: {}\n", .{job});
@@ -29,14 +28,14 @@ pub fn job_loop() void {
 // Main application logic
 
 const Message = struct {
-    hash: index.ID,
+    hash: ID,
     data: []u8,
 };
 
 const Envelope = struct {
     target: union(enum) {
         guid: u64,
-        id: index.ID,
+        id: ID,
     }, //target output node
     message: Message,
 };
@@ -53,7 +52,7 @@ pub const Job = union(enum) {
         switch (self.*) {
             .connect => |address| {
                 std.log.info("Connect {s}", .{address});
-                try index.connect_and_add(address);
+                try default.server.connect_and_add(address);
             },
             // Multi function send message,
             // both for incoming and outgoing messages
@@ -62,7 +61,7 @@ pub const Job = union(enum) {
                 switch (envelope.target) {
                     .guid => |guid| {
                         // first find the ingoing or outgoing connection
-                        var in_it = index.connections.incoming_connections.keyIterator();
+                        var in_it = default.server.incoming_connections.keyIterator();
                         while (in_it.next()) |connection| {
                             if (connection.*.guid == guid) {
                                 try connection.*.write(message.data);
@@ -70,7 +69,7 @@ pub const Job = union(enum) {
                             }
                         }
 
-                        var out_it = index.connections.outgoing_connections.keyIterator();
+                        var out_it = default.server.outgoing_connections.keyIterator();
                         while (out_it.next()) |connection| {
                             if (connection.*.guid == guid) {
                                 try connection.*.write(message.data);
@@ -81,15 +80,15 @@ pub const Job = union(enum) {
                         std.log.info("Wrote message {s}", .{message});
                     },
                     .id => |id| {
-                        var out_it = index.connections.outgoing_connections.keyIterator();
+                        var out_it = default.server.outgoing_connections.keyIterator();
 
-                        var best_connection: ?*index.connections.OutConnection = null;
-                        var lowest_dist = std.mem.zeroes(index.ID);
+                        var best_connection: ?*connections.OutConnection = null;
+                        var lowest_dist = std.mem.zeroes(ID);
                         while (out_it.next()) |connection| {
                             if (utils.id_is_zero(connection.*.id))
                                 continue;
 
-                            const dist = utils.xor(connection.*.id, index.server.id);
+                            const dist = utils.xor(connection.*.id, default.server.id);
                             if (utils.id_is_zero(lowest_dist) or utils.less(dist, lowest_dist)) {
                                 lowest_dist = dist;
                                 best_connection = connection.*;
@@ -106,7 +105,7 @@ pub const Job = union(enum) {
             },
             .process_message => |message| {
                 var data_slice = message.data;
-                var content = try index.serialise.deserialise(index.Data, &data_slice);
+                var content = try serialise.deserialise(Data, &data_slice);
                 std.log.info("process message: {any}", .{content});
             },
         }
