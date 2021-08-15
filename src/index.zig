@@ -5,6 +5,8 @@ pub const connections = @import("connections.zig");
 pub const AtomicQueue = @import("queue.zig").AtomicQueue;
 pub const serialise = @import("serialise.zig");
 pub const utils = @import("utils.zig");
+pub const routing = @import("routing.zig");
+pub const data = @import("data.zig");
 
 const std = @import("std");
 
@@ -17,8 +19,7 @@ pub const default = struct {
 
 pub const get_guid = utils.get_guid;
 
-pub const Data = @import("data.zig").Data;
-
 // Common types
 const ID_SIZE = 32;
 pub const ID = [ID_SIZE]u8;
+pub const Hash = [ID_SIZE]u8;

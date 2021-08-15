@@ -60,11 +60,11 @@ pub fn deserialise(comptime T: type, msg: *[]u8) !T {
                     }
                 }
             } else { // c struct or general struct
-                const bytes_mem = mem.asBytes(&t);
+                const bytes_mem = std.mem.asBytes(&t);
                 if (bytes_mem.len > msg.len)
                     return error.FailedToDeserialise;
-                mem.copy(u8, bytes_mem, msg[0..bytes_mem.len]);
-                try nng_ret(c.nng_msg_trim(msg, bytes_mem.len));
+                std.mem.copy(u8, bytes_mem, msg.*);
+                msg.* = msg.*[bytes_mem.len..];
             }
         },
         .Enum => {

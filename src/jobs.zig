@@ -105,7 +105,7 @@ pub const Job = union(enum) {
             },
             .process_message => |message| {
                 var data_slice = message.data;
-                var content = try serialise.deserialise(Data, &data_slice);
+                var content = try serialise.deserialise(data.Data, &data_slice);
                 std.log.info("process message: {any}", .{content});
             },
         }

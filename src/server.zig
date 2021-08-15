@@ -36,7 +36,10 @@ pub const Server = struct {
         while (true) {
             var stream_connection = try server.stream_server.accept();
             var connection = try default.allocator.create(connections.InConnection); //append the frame before assigning to it, it can't move in Memory
-            // TODO, appending to arraylist can actually move other frames if arraylist needs to relocate
+
+            // Discover this ip
+            try routing.add_ip_seen(stream_connection.address);
+
             connection.* = .{
                 .stream_connection = stream_connection,
                 .guid = get_guid(),
