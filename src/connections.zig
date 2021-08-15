@@ -43,7 +43,7 @@ pub const InConnection = struct {
             std.log.info("read {s}", .{buf[0..len]});
             const hash = utils.calculate_hash(buf[0..len]);
             try default.server.connection_router.put(hash, connection.guid);
-            try jobs.enqueue(.{ .process_message = .{ .hash = hash, .data = try std.mem.dupe(default.allocator, u8, buf[0..len]) } });
+            try jobs.enqueue(.{ .process_message = .{ .hash = hash, .content = try std.mem.dupe(default.allocator, u8, buf[0..len]) } });
 
             if (len == 0)
                 break;
@@ -85,7 +85,7 @@ pub const OutConnection = struct {
             std.log.info("read {s}", .{buf[0..len]});
             const hash = utils.calculate_hash(buf[0..len]);
             try default.server.connection_router.put(hash, connection.guid);
-            try jobs.enqueue(.{ .process_message = .{ .hash = hash, .data = try std.mem.dupe(default.allocator, u8, buf[0..len]) } });
+            try jobs.enqueue(.{ .process_message = .{ .hash = hash, .content = try std.mem.dupe(default.allocator, u8, buf[0..len]) } });
 
             if (len == 0)
                 break;

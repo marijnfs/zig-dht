@@ -140,7 +140,7 @@ pub fn serialise_to_buffer(t: anytype, buf: *std.ArrayList(u8)) !void {
                     }
                 }
             } else {
-                try buf.append(std.mem.asBytes(&t));
+                try buf.appendSlice(std.mem.asBytes(&t));
             }
         },
         .Enum => {

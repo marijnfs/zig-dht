@@ -29,7 +29,7 @@ pub fn job_loop() void {
 
 const Message = struct {
     hash: ID,
-    data: []u8,
+    content: []u8,
 };
 
 const Envelope = struct {
@@ -37,7 +37,7 @@ const Envelope = struct {
         guid: u64,
         id: ID,
     }, //target output node
-    message: Message,
+    content: communication.Data,
 };
 
 pub const Job = union(enum) {
@@ -46,25 +46,33 @@ pub const Job = union(enum) {
     process_message: Message,
 
     fn work(self: *Job) !void {
-
-        // logger.log_fmt("run job: {}\n", .{self.*});
-
         switch (self.*) {
             .connect => |address| {
                 std.log.info("Connect {s}", .{address});
-                try default.server.connect_and_add(address);
+                const out_connection = try default.server.connect_and_add(address);
+                try enqueue(.{ .send_message = .{ .target = .{ .guid = out_connection.guid }, .content = .{ .ping = .{ .source_id = default.server.id } } } });
             },
             // Multi function send message,
             // both for incoming and outgoing messages
             .send_message => |envelope| {
-                const message = envelope.message;
+                const content = envelope.content;
+
+                const data = switch (content) {
+                    .raw => |raw_data| raw_data,
+                    else => blk: {
+                        var buf = std.ArrayList(u8).init(default.allocator);
+                        try serialise.serialise_to_buffer(content, &buf);
+                        const slice = buf.toOwnedSlice();
+                        break :blk slice;
+                    },
+                };
                 switch (envelope.target) {
                     .guid => |guid| {
                         // first find the ingoing or outgoing connection
                         var in_it = default.server.incoming_connections.keyIterator();
                         while (in_it.next()) |connection| {
                             if (connection.*.guid == guid) {
-                                try connection.*.write(message.data);
+                                try connection.*.write(data);
                                 break;
                             }
                         }
@@ -72,12 +80,12 @@ pub const Job = union(enum) {
                         var out_it = default.server.outgoing_connections.keyIterator();
                         while (out_it.next()) |connection| {
                             if (connection.*.guid == guid) {
-                                try connection.*.write(message.data);
+                                try connection.*.write(data);
                                 break;
                             }
                         }
 
-                        std.log.info("Wrote message {s}", .{message});
+                        std.log.info("Wrote message {s}", .{data});
                     },
                     .id => |id| {
                         var out_it = default.server.outgoing_connections.keyIterator();
@@ -96,7 +104,7 @@ pub const Job = union(enum) {
                         }
 
                         if (best_connection) |connection| {
-                            try connection.*.write(message.data);
+                            try connection.*.write(data);
                         } else {
                             std.log.info("Couldn't route {any}", .{id});
                         }
@@ -104,8 +112,8 @@ pub const Job = union(enum) {
                 }
             },
             .process_message => |message| {
-                var data_slice = message.data;
-                var content = try serialise.deserialise(data.Data, &data_slice);
+                var data_slice = message.content;
+                var content = try serialise.deserialise(communication.Data, &data_slice);
                 std.log.info("process message: {any}", .{content});
             },
         }

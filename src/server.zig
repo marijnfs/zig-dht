@@ -51,7 +51,7 @@ pub const Server = struct {
         }
     }
 
-    pub fn connect_and_add(server: *Server, address: net.Address) !void {
+    pub fn connect_and_add(server: *Server, address: net.Address) !*connections.OutConnection {
         var out_connection = try default.allocator.create(connections.OutConnection);
         out_connection.* = .{
             .address = address,
@@ -60,6 +60,7 @@ pub const Server = struct {
         };
         out_connection.frame = async out_connection.connection_read_loop();
         try server.outgoing_connections.putNoClobber(out_connection, {});
+        return out_connection;
     }
 
     pub fn deinit(server: *Server) void {

@@ -6,7 +6,7 @@ pub const AtomicQueue = @import("queue.zig").AtomicQueue;
 pub const serialise = @import("serialise.zig");
 pub const utils = @import("utils.zig");
 pub const routing = @import("routing.zig");
-pub const data = @import("data.zig");
+pub const communication = @import("communication.zig");
 
 const std = @import("std");
 
