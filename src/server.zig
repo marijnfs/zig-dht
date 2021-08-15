@@ -26,6 +26,7 @@ pub const Server = struct {
         server.incoming_connections = std.AutoHashMap(*connections.InConnection, void).init(default.allocator);
         server.outgoing_connections = std.AutoHashMap(*connections.OutConnection, void).init(default.allocator);
         server.connection_router = std.AutoHashMap(ID, u64).init(default.allocator);
+        std.log.info("my id: {any}", .{server.id});
     }
 
     pub fn accept_loop(server: *Server) !void {
@@ -68,8 +69,8 @@ pub const Server = struct {
     }
 
     const Config = struct {
-        name: []u8,
-        port: u16,
+        name: []u8 = undefined,
+        port: u16 = 0,
     };
 
     const State = enum {

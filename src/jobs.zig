@@ -48,7 +48,7 @@ pub const Job = union(enum) {
     fn work(self: *Job) !void {
         switch (self.*) {
             .connect => |address| {
-                std.log.info("Connect {s}", .{address});
+                std.log.info("Connect {s}, sending ping: {any}", .{ address, default.server.id });
                 const out_connection = try default.server.connect_and_add(address);
                 try enqueue(.{ .send_message = .{ .target = .{ .guid = out_connection.guid }, .content = .{ .ping = .{ .source_id = default.server.id } } } });
             },

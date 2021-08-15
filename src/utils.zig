@@ -47,9 +47,15 @@ pub fn less(id1: ID, id2: ID) bool {
     return std.mem.order(u8, id1[0..], id2[0..]) == .lt;
 }
 
+var prng = std.rand.DefaultPrng.init(0);
+pub fn init_prng() void {
+    prng = std.rand.DefaultPrng.init(@intCast(u64, std.time.milliTimestamp()));
+}
+
 pub fn rand_id() ID {
     var id: ID = undefined;
-    std.crypto.random.bytes(&id);
+    prng.random.bytes(&id);
+    std.log.info("randid: {any}", .{id});
     return id;
 }
 
