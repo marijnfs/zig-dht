@@ -3,9 +3,9 @@ usingnamespace @import("index.zig");
 
 // Message contents
 pub const Message = struct {
-    hash: ID,
-    target_id: ID,
-    source_id: ID,
+    hash: ID = std.mem.zeroes(ID),
+    target_id: ID = std.mem.zeroes(ID),
+    source_id: ID = std.mem.zeroes(ID),
     content: Content,
 };
 

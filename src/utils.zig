@@ -68,3 +68,7 @@ pub fn calculate_hash(data: []const u8) ID {
 pub fn id_is_zero(id: ID) bool {
     return std.mem.eql(u8, &id, &std.mem.zeroes(ID));
 }
+
+pub fn id_is_equal(id: ID, id2: ID) bool {
+    return std.mem.eql(u8, &id, &id2);
+}

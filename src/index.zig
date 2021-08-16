@@ -15,6 +15,7 @@ pub const default = struct {
 
     // Main server instance
     pub var server: @import("server.zig").Server = undefined;
+    pub var model: @import("model.zig") = undefined;
 };
 
 pub const get_guid = utils.get_guid;

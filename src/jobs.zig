@@ -33,7 +33,7 @@ const Envelope = struct { target: union(enum) {
 }, //target output node
 payload: union(enum) {
     raw: []u8,
-    content: communication.Content,
+    message: communication.Message,
 } };
 
 pub const InboundMessage = struct {
@@ -52,7 +52,9 @@ pub const Job = union(enum) {
             .connect => |address| {
                 std.log.info("Connect {s}, sending ping: {any}", .{ address, default.server.id });
                 const out_connection = try default.server.connect_and_add(address);
-                try enqueue(.{ .send_message = .{ .target = .{ .guid = out_connection.guid }, .payload = .{ .content = .{ .ping = .{ .source_id = default.server.id } } } } });
+                const content = communication.Content{ .ping = .{ .source_id = default.server.id } };
+                const message = communication.Message{ .content = content };
+                try enqueue(.{ .send_message = .{ .target = .{ .guid = out_connection.guid }, .payload = .{ .message = message } } });
             },
             // Multi function send message,
             // both for incoming and outgoing messages
@@ -113,12 +115,27 @@ pub const Job = union(enum) {
                     },
                 }
             },
-            .forward_message => |message| {
-                var data_slice = message.content;
-                // const hash = message.hash;
+            .forward_message => |inbound_message| {
+                var data_slice = inbound_message.content;
+                if (data_slice.len < @sizeOf(ID)) {
+                    std.log.info("message dropped", .{});
+                    return;
+                }
 
-                var content = try serialise.deserialise(communication.Content, &data_slice);
-                std.log.info("process forward message: {any}", .{content});
+                const reported_hash = data_slice[0..@sizeOf(ID)];
+
+                const calculated_hash = utils.calculate_hash(data_slice[@sizeOf(ID)..]);
+                if (!std.mem.eql(u8, reported_hash, &calculated_hash)) {
+                    std.log.info("message dropped, hash doesn't match", .{});
+                    return;
+                }
+
+                var message = try serialise.deserialise(communication.Message, &data_slice);
+
+                if (utils.id_is_zero(message.target_id) or utils.id_is_equal(message.target_id, default.server.id)) {
+                    std.log.info("message is for me", .{});
+                }
+                std.log.info("process forward message: {any}", .{message});
             },
             .backward_message => |message| {
                 var data_slice = message.content;
