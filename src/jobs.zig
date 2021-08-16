@@ -4,6 +4,7 @@
 
 const std = @import("std");
 usingnamespace @import("index.zig");
+
 var job_queue = AtomicQueue(Job).init(default.allocator);
 
 pub fn enqueue(job: Job) !void {
@@ -26,29 +27,26 @@ pub fn job_loop() void {
 
 // Jobs
 // Main application logic
-
-const Envelope = struct { target: union(enum) {
-    guid: u64,
-    id: ID,
-}, //target output node
-payload: union(enum) {
-    raw: []u8,
-    message: communication.Message,
-} };
-
-pub const InboundMessage = struct {
-    guid: u64,
-    content: []u8,
-};
-
 pub const Job = union(enum) {
     connect: std.net.Address,
-    send_message: Envelope,
-    forward_message: InboundMessage,
-    backward_message: InboundMessage,
+    send_message: communication.Envelope,
+    forward_message: communication.InboundMessage,
+    backward_message: communication.InboundMessage,
+    process_forward: struct {
+        guid: u64,
+        message: communication.Message,
+    },
 
     fn work(self: *Job) !void {
         switch (self.*) {
+            .process_forward => |guid_message| {
+                const message = guid_message.message;
+                const guid = guid_message.guid;
+                try communication.process_forward(message, guid);
+                //this means the message is for us
+                //most of the main domain code is here
+
+            },
             .connect => |address| {
                 std.log.info("Connect {s}, sending ping: {any}", .{ address, default.server.id });
                 const out_connection = try default.server.connect_and_add(address);
@@ -143,6 +141,9 @@ pub const Job = union(enum) {
                 if (utils.id_is_zero(message.target_id) or utils.id_is_equal(message.target_id, default.server.id)) {
                     std.log.info("message is for me", .{});
                 }
+
+                try jobs.enqueue(.{ .process_forward = .{ .guid = inbound_message.guid, .message = message } });
+
                 std.log.info("process forward message: {any}", .{message});
             },
             .backward_message => |message| {

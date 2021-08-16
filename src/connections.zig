@@ -21,6 +21,10 @@ pub const InConnection = struct {
         Disconnected,
     };
 
+    pub fn address(conn: *InConnection) std.net.Address {
+        return conn.stream_connection.address;
+    }
+
     pub fn write(connection: *InConnection, buf: []u8) !void {
         const len = try connection.stream_connection.stream.write(buf);
         if (len != buf.len)

@@ -16,6 +16,24 @@ pub const Server = struct {
     // both for incoming and outgoing connections.
     connection_router: std.AutoHashMap(ID, u64) = undefined,
 
+    pub fn get_incoming_connection(server: *Server, guid: u64) !*connections.InConnection {
+        var it = server.incoming_connections.keyIterator();
+        while (it.next()) |conn| {
+            if (conn.*.guid == guid)
+                return conn.*;
+        }
+        return error.NotFound;
+    }
+
+    pub fn get_outgoing_connection(server: *Server, guid: u64) !*connections.OutConnection {
+        var it = server.outgoing_connections.keyIterator();
+        while (it.next()) |conn| {
+            if (conn.guid == guid)
+                return conn;
+        }
+        return error.NotFound;
+    }
+
     pub fn initialize(server: *Server) !void {
         server.stream_server = net.StreamServer.init(net.StreamServer.Options{});
         std.log.info("Connecting to {s}:{}", .{ server.config.name, server.config.port });

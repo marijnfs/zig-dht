@@ -93,6 +93,12 @@ pub fn deserialise(comptime T: type, msg: *[]u8) !T {
     return t;
 }
 
+pub fn serialise(t: anytype) ![]u8 {
+    var buf = std.ArrayList(u8).init(default.allocator);
+    try serialise_to_buffer(t, &buf);
+    return buf.toOwnedSlice();
+}
+
 pub fn serialise_to_buffer(t: anytype, buf: *std.ArrayList(u8)) !void {
     const T = comptime @TypeOf(t);
 
