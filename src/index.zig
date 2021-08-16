@@ -7,6 +7,7 @@ pub const serialise = @import("serialise.zig");
 pub const utils = @import("utils.zig");
 pub const routing = @import("routing.zig");
 pub const communication = @import("communication.zig");
+pub const model = @import("model.zig");
 
 const std = @import("std");
 
@@ -15,7 +16,6 @@ pub const default = struct {
 
     // Main server instance
     pub var server: @import("server.zig").Server = undefined;
-    pub var model: @import("model.zig") = undefined;
 };
 
 pub const get_guid = utils.get_guid;

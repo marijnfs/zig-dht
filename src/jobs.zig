@@ -122,10 +122,14 @@ pub const Job = union(enum) {
                     return;
                 }
 
-                const reported_hash = data_slice[0..@sizeOf(ID)];
+                const reported_hash: ID = data_slice[0..@sizeOf(ID)].*;
+                if ((try model.hashes_seen.getOrPut(reported_hash)).found_existing) {
+                    std.log.info("message dropped, already seed", .{});
+                    return;
+                }
 
                 const calculated_hash = utils.calculate_hash(data_slice[@sizeOf(ID)..]);
-                if (!std.mem.eql(u8, reported_hash, &calculated_hash)) {
+                if (!utils.id_is_equal(reported_hash, calculated_hash)) {
                     std.log.info("message dropped, hash doesn't match", .{});
                     return;
                 }

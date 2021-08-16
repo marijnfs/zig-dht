@@ -2,4 +2,4 @@ const std = @import("std");
 
 usingnamespace @import("index.zig");
 
-var hashes_seen = std.AutoHashMap(ID).init(default.allocator);
+pub var hashes_seen = std.AutoHashMap(ID, void).init(default.allocator);
