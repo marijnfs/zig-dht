@@ -66,7 +66,10 @@ pub const Job = union(enum) {
                     else => blk: {
                         var buf = std.ArrayList(u8).init(default.allocator);
                         try serialise.serialise_to_buffer(payload, &buf);
-                        const slice = buf.toOwnedSlice();
+                        var slice = buf.toOwnedSlice();
+                        //calculate the hash
+                        const hash = utils.calculate_hash(slice[@sizeOf(ID)..]);
+                        std.mem.copy(u8, slice[0..@sizeOf(ID)], &hash);
                         break :blk slice;
                     },
                 };
@@ -134,6 +137,7 @@ pub const Job = union(enum) {
                     return;
                 }
 
+                std.log.info("message len: {}", .{data_slice.len});
                 var message = try serialise.deserialise(communication.Message, &data_slice);
 
                 if (utils.id_is_zero(message.target_id) or utils.id_is_equal(message.target_id, default.server.id)) {

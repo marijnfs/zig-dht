@@ -16,15 +16,13 @@ pub fn deserialise(comptime T: type, msg: *[]u8) !T {
             }
         },
         .Array => {
-            const E = std.meta.Child(T);
-            const len = info.Array.len;
-            const byteSize = @sizeOf(E) * len;
+            const byteSize = @sizeOf(T);
 
             if (msg.len < byteSize) {
                 return error.MsgSmallerThanArray;
             }
 
-            std.mem.copy(u8, std.mem.asBytes(&t), msg.*);
+            std.mem.copy(u8, std.mem.asBytes(&t), msg.*[0..byteSize]);
             msg.* = msg.*[byteSize..];
         },
         .Pointer => {
@@ -63,7 +61,7 @@ pub fn deserialise(comptime T: type, msg: *[]u8) !T {
                 const bytes_mem = std.mem.asBytes(&t);
                 if (bytes_mem.len > msg.len)
                     return error.FailedToDeserialise;
-                std.mem.copy(u8, bytes_mem, msg.*);
+                std.mem.copy(u8, bytes_mem, msg.*[0..bytes_mem.len]);
                 msg.* = msg.*[bytes_mem.len..];
             }
         },
