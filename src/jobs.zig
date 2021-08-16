@@ -27,41 +27,43 @@ pub fn job_loop() void {
 // Jobs
 // Main application logic
 
-const Message = struct {
-    hash: ID,
-    content: []u8,
-};
+const Envelope = struct { target: union(enum) {
+    guid: u64,
+    id: ID,
+}, //target output node
+payload: union(enum) {
+    raw: []u8,
+    content: communication.Content,
+} };
 
-const Envelope = struct {
-    target: union(enum) {
-        guid: u64,
-        id: ID,
-    }, //target output node
-    content: communication.Data,
+pub const InboundMessage = struct {
+    guid: u64,
+    content: []u8,
 };
 
 pub const Job = union(enum) {
     connect: std.net.Address,
     send_message: Envelope,
-    process_message: Message,
+    forward_message: InboundMessage,
+    backward_message: InboundMessage,
 
     fn work(self: *Job) !void {
         switch (self.*) {
             .connect => |address| {
                 std.log.info("Connect {s}, sending ping: {any}", .{ address, default.server.id });
                 const out_connection = try default.server.connect_and_add(address);
-                try enqueue(.{ .send_message = .{ .target = .{ .guid = out_connection.guid }, .content = .{ .ping = .{ .source_id = default.server.id } } } });
+                try enqueue(.{ .send_message = .{ .target = .{ .guid = out_connection.guid }, .payload = .{ .content = .{ .ping = .{ .source_id = default.server.id } } } } });
             },
             // Multi function send message,
             // both for incoming and outgoing messages
             .send_message => |envelope| {
-                const content = envelope.content;
+                const payload = envelope.payload;
 
-                const data = switch (content) {
+                const data = switch (payload) {
                     .raw => |raw_data| raw_data,
                     else => blk: {
                         var buf = std.ArrayList(u8).init(default.allocator);
-                        try serialise.serialise_to_buffer(content, &buf);
+                        try serialise.serialise_to_buffer(payload, &buf);
                         const slice = buf.toOwnedSlice();
                         break :blk slice;
                     },
@@ -111,10 +113,19 @@ pub const Job = union(enum) {
                     },
                 }
             },
-            .process_message => |message| {
+            .forward_message => |message| {
                 var data_slice = message.content;
-                var content = try serialise.deserialise(communication.Data, &data_slice);
-                std.log.info("process message: {any}", .{content});
+                // const hash = message.hash;
+
+                var content = try serialise.deserialise(communication.Content, &data_slice);
+                std.log.info("process forward message: {any}", .{content});
+            },
+            .backward_message => |message| {
+                var data_slice = message.content;
+                // const hash = message.hash;
+
+                var content = try serialise.deserialise(communication.Content, &data_slice);
+                std.log.info("process backward message: {any}", .{content});
             },
         }
     }

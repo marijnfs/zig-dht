@@ -40,10 +40,10 @@ pub const InConnection = struct {
 
         while (true) {
             var len = try stream_connection.stream.read(&buf);
-            std.log.info("read {s}", .{buf[0..len]});
-            const hash = utils.calculate_hash(buf[0..len]);
-            try default.server.connection_router.put(hash, connection.guid);
-            try jobs.enqueue(.{ .process_message = .{ .hash = hash, .content = try std.mem.dupe(default.allocator, u8, buf[0..len]) } });
+            // std.log.info("read {s}", .{buf[0..len]});
+            // const hash = utils.calculate_hash(buf[0..len]);
+            // try default.server.connection_router.put(hash, connection.guid);
+            try jobs.enqueue(.{ .forward_message = .{ .guid = connection.guid, .content = try std.mem.dupe(default.allocator, u8, buf[0..len]) } });
 
             if (len == 0)
                 break;
@@ -83,9 +83,9 @@ pub const OutConnection = struct {
         while (true) {
             var len = try connection.stream_connection.read(&buf);
             std.log.info("read {s}", .{buf[0..len]});
-            const hash = utils.calculate_hash(buf[0..len]);
-            try default.server.connection_router.put(hash, connection.guid);
-            try jobs.enqueue(.{ .process_message = .{ .hash = hash, .content = try std.mem.dupe(default.allocator, u8, buf[0..len]) } });
+            // const hash = utils.calculate_hash(buf[0..len]);
+            // try default.server.connection_router.put(hash, connection.guid);
+            try jobs.enqueue(.{ .backward_message = .{ .guid = connection.guid, .content = try std.mem.dupe(default.allocator, u8, buf[0..len]) } });
 
             if (len == 0)
                 break;

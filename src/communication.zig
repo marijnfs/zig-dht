@@ -2,8 +2,14 @@ const std = @import("std");
 usingnamespace @import("index.zig");
 
 // Message contents
+pub const Message = struct {
+    hash: ID,
+    target_id: ID,
+    source_id: ID,
+    content: Content,
+};
 
-pub const Data = union(enum) {
+pub const Content = union(enum) {
     ping: struct {
         source_id: ID,
     },
