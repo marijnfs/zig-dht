@@ -1,7 +1,8 @@
 const std = @import("std");
-const allocator = @import("index.zig").default.allocator;
+usingnamespace @import("index.zig");
 
-pub fn deserialise(comptime T: type, msg: *[]u8) !T {
+pub fn deserialise(comptime T: type, msg_ptr: *[]u8) !T {
+    const msg = msg_ptr.*;
     var t: T = undefined;
     const info = @typeInfo(T);
 
@@ -12,7 +13,7 @@ pub fn deserialise(comptime T: type, msg: *[]u8) !T {
                 const name = field_info.name;
                 const FieldType = field_info.field_type;
 
-                @field(&t, name) = try deserialise(FieldType, msg);
+                @field(&t, name) = try deserialise(FieldType, msg_ptr);
             }
         },
         .Array => {
@@ -21,25 +22,24 @@ pub fn deserialise(comptime T: type, msg: *[]u8) !T {
             if (msg.len < byteSize) {
                 return error.MsgSmallerThanArray;
             }
-
-            std.mem.copy(u8, std.mem.asBytes(&t), msg.*[0..byteSize]);
-            msg.* = msg.*[byteSize..];
+            std.mem.copy(u8, std.mem.asBytes(&t), msg[0..byteSize]);
+            msg_ptr.* = msg[byteSize..];
         },
         .Pointer => {
             if (comptime std.meta.trait.isSlice(T)) {
-                var len = try deserialise(u64, msg);
+                var len = try deserialise(u64, msg_ptr);
                 const C = comptime std.meta.Child(T);
 
                 if (len * @sizeOf(C) > msg.len)
                     return error.FailedToDeserialise;
 
                 if (comptime std.meta.sentinel(T) == null) {
-                    t = try allocator.alloc(C, len);
+                    t = try default.allocator.alloc(C, len);
                 } else {
                     t = try allocator.allocSentinel(C, len, 0);
                 }
                 for (t) |*e| {
-                    e.* = try deserialise(C, msg);
+                    e.* = try deserialise(C, msg_ptr);
                 }
             } else {
                 @compileError("Expected to serialise slice");
@@ -47,27 +47,28 @@ pub fn deserialise(comptime T: type, msg: *[]u8) !T {
         },
         .Union => {
             if (comptime info.Union.tag_type) |TagType| {
-                const active_tag = try deserialise(TagType, msg);
-                std.log.info("Deserialise: {} {}", .{ @as(std.meta.TagType(T), active_tag), TagType });
+                const active_tag = try deserialise(std.meta.TagType(T), msg_ptr);
+                std.log.info("Deserialise: activetag: {} T:{}", .{ active_tag, TagType });
 
                 inline for (info.Union.fields) |field_info| {
                     if (@field(TagType, field_info.name) == active_tag) {
                         const name = field_info.name;
                         const FieldType = field_info.field_type;
-                        t = @unionInit(T, name, try deserialise(FieldType, msg));
+                        t = @unionInit(T, name, try deserialise(FieldType, msg_ptr));
                     }
                 }
             } else { // c struct or general struct
                 const bytes_mem = std.mem.asBytes(&t);
                 if (bytes_mem.len > msg.len)
                     return error.FailedToDeserialise;
-                std.mem.copy(u8, bytes_mem, msg.*[0..bytes_mem.len]);
-                msg.* = msg.*[bytes_mem.len..];
+                std.mem.copy(u8, bytes_mem, msg[0..bytes_mem.len]);
+                msg_ptr.* = msg[bytes_mem.len..];
             }
         },
         .Enum => {
             t = blk: {
-                var int_operand = try deserialise(u32, msg);
+                var int_operand = try deserialise(u32, msg_ptr);
+                std.log.info("enum: {}", .{int_operand});
                 break :blk @intToEnum(T, @intCast(std.meta.TagType(T), int_operand));
             };
         },
@@ -75,15 +76,15 @@ pub fn deserialise(comptime T: type, msg: *[]u8) !T {
             const bytes_mem = std.mem.asBytes(&t);
             if (bytes_mem.len > msg.len)
                 return error.FailedToDeserialise;
-            std.mem.copy(u8, bytes_mem, msg.*[0..bytes_mem.len]);
-
-            msg.* = msg.*[bytes_mem.len..];
+            std.mem.copy(u8, bytes_mem, msg[0..bytes_mem.len]);
+            std.log.info("int t: {} {s}", .{ t, msg[0..bytes_mem.len] });
+            msg_ptr.* = msg[bytes_mem.len..];
         },
         .Optional => {
             const C = comptime std.meta.Child(T);
-            const opt = try deserialise(u8, msg);
+            const opt = try deserialise(u8, msg_ptr);
             if (opt > 0) {
-                t = try deserialise(C, msg);
+                t = try deserialise(C, msg_ptr);
             } else {
                 t = null;
             }
@@ -132,14 +133,15 @@ pub fn serialise_to_buffer(t: anytype, buf: *std.ArrayList(u8)) !void {
         .Union => {
             if (info.Union.tag_type) |TagType| {
                 const active_tag = std.meta.activeTag(t);
-                std.log.info("{} {}", .{ @as(std.meta.TagType(T), active_tag), TagType });
+                std.log.info("union tag: {} | {}", .{ @as(std.meta.TagType(T), active_tag), TagType });
                 try serialise_to_buffer(@as(std.meta.TagType(T), active_tag), buf);
 
                 // This manual inline loop is currently needed to find the right 'field' for the union
                 inline for (info.Union.fields) |field_info| {
-                    if (@field(TagType, field_info.name) == active_tag) {
-                        const name = field_info.name;
+                    const name = field_info.name;
+                    if (@field(TagType, name) == active_tag) {
                         // const FieldType = field_info.field_type;
+
                         try serialise_to_buffer(@field(t, name), buf);
                     }
                 }
@@ -148,9 +150,13 @@ pub fn serialise_to_buffer(t: anytype, buf: *std.ArrayList(u8)) !void {
             }
         },
         .Enum => {
+            std.log.info("write enum: t:{} i32:{}", .{ t, @intCast(i32, @enumToInt(t)) });
+
             try serialise_to_buffer(@intCast(i32, @enumToInt(t)), buf);
         },
         .Int, .Float => {
+            std.log.info("write int: {}", .{t});
+
             try buf.appendSlice(std.mem.asBytes(&t));
         },
         .Optional => {
@@ -180,10 +186,7 @@ test "regular struct" {
     var x = [_]i64{ 1, 2, 3, 4, 5, 6 };
     var t = T{ .b = &x, .c = 42, .d = null };
 
-    var buf = std.ArrayList(u8).init(allocator);
-    try serialise_to_buffer(t, &buf);
-
-    var slice = buf.toOwnedSlice();
+    var slice = try serialise(t);
     var t2 = try deserialise(T, &slice);
 
     try expect(t.a == t2.a);
@@ -203,10 +206,25 @@ test "union" {
     var x = UnionEnum{ .int = 32 };
     // var y = UnionEnum{ .float = 42.42 };
 
-    var buf = std.ArrayList(u8).init(allocator);
-    try serialise_to_buffer(x, &buf);
-    var slice = buf.toOwnedSlice();
+    var slice = try serialise(x);
     var x_2 = try deserialise(UnionEnum, &slice);
 
     try expect(x.int == x_2.int);
+}
+
+test "message" {
+    const return_message = communication.Message{ .content = .{ .pong = .{ .source_id = utils.rand_id(), .apparent_ip = undefined } } };
+
+    const envelope = communication.Envelope{
+        .target = .{ .guid = 52 },
+        .payload = .{
+            .message = return_message,
+        },
+    };
+
+    const slice = try serialise(envelope);
+    var tmp_slice = slice;
+    var x_2 = try deserialise(communication.Envelope, &tmp_slice);
+    const slice2 = try serialise(x_2);
+    try std.testing.expectEqual(slice2, slice);
 }

@@ -61,13 +61,14 @@ pub const Job = union(enum) {
 
                 const data = switch (payload) {
                     .raw => |raw_data| raw_data,
-                    else => blk: {
-                        var buf = std.ArrayList(u8).init(default.allocator);
-                        try serialise.serialise_to_buffer(payload, &buf);
-                        var slice = buf.toOwnedSlice();
+                    else => |content| blk: {
+                        std.log.info("test content: {}", .{content});
+                        var slice = try serial.serialise(content);
                         //calculate the hash
                         const hash = utils.calculate_hash(slice[@sizeOf(ID)..]);
                         std.mem.copy(u8, slice[0..@sizeOf(ID)], &hash);
+                        var tmp_slice = slice;
+                        std.log.info("deserialise before sending: {}", .{try serial.deserialise(communication.Message, &tmp_slice)});
                         break :blk slice;
                     },
                 };
@@ -136,13 +137,14 @@ pub const Job = union(enum) {
                 }
 
                 std.log.info("message len: {}", .{data_slice.len});
-                var message = try serialise.deserialise(communication.Message, &data_slice);
+                var message = try serial.deserialise(communication.Message, &data_slice);
 
                 if (utils.id_is_zero(message.target_id) or utils.id_is_equal(message.target_id, default.server.id)) {
                     std.log.info("message is for me", .{});
+                    try jobs.enqueue(.{ .process_forward = .{ .guid = inbound_message.guid, .message = message } });
+                } else {
+                    try jobs.enqueue(.{ .send_message = .{ .target = .{ .id = message.target_id }, .payload = .{ .raw = data_slice } } });
                 }
-
-                try jobs.enqueue(.{ .process_forward = .{ .guid = inbound_message.guid, .message = message } });
 
                 std.log.info("process forward message: {any}", .{message});
             },
@@ -150,8 +152,9 @@ pub const Job = union(enum) {
                 var data_slice = message.content;
                 // const hash = message.hash;
 
-                var content = try serialise.deserialise(communication.Content, &data_slice);
-                std.log.info("process backward message: {any}", .{content});
+                const inbound_message = try serial.deserialise(communication.Message, &data_slice);
+
+                std.log.info("process backward message: {any}", .{inbound_message});
             },
         }
     }

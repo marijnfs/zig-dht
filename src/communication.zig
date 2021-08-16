@@ -52,6 +52,8 @@ pub fn process_forward(message: communication.Message, guid: u64) !void {
                     .message = return_message,
                 },
             };
+            std.log.info("reply env: {any}", .{envelope.payload});
+
             try jobs.enqueue(.{ .send_message = envelope });
         },
         else => {
