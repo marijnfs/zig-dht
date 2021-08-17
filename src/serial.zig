@@ -226,5 +226,5 @@ test "message" {
     var tmp_slice = slice;
     var x_2 = try deserialise(communication.Envelope, &tmp_slice);
     const slice2 = try serialise(x_2);
-    try std.testing.expectEqual(slice2, slice);
+    try expect(std.mem.eql(u8, slice2, slice));
 }
