@@ -61,12 +61,12 @@ pub const Job = union(enum) {
 
                 const data = switch (payload) {
                     .raw => |raw_data| raw_data,
-                    else => |content| blk: {
-                        std.log.info("test content: {}", .{content});
-                        var slice = try serial.serialise(content);
+                    .message => |message| blk: {
+                        std.log.info("test message: {}", .{message});
+                        var slice = try serial.serialise(message);
                         //calculate the hash
-                        const hash = utils.calculate_hash(slice[@sizeOf(ID)..]);
-                        std.mem.copy(u8, slice[0..@sizeOf(ID)], &hash);
+                        const hash = utils.calculate_hash(slice[@sizeOf(Hash)..]);
+                        std.mem.copy(u8, slice[0..@sizeOf(Hash)], &hash);
                         var tmp_slice = slice;
                         std.log.info("deserialise before sending: {}", .{try serial.deserialise(communication.Message, &tmp_slice)});
                         break :blk slice;
