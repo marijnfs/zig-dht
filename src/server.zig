@@ -36,14 +36,15 @@ pub const Server = struct {
 
     pub fn initialize(server: *Server) !void {
         server.stream_server = net.StreamServer.init(net.StreamServer.Options{});
-        std.log.info("Connecting to {s}:{}", .{ server.config.name, server.config.port });
-        const localhost = try net.Address.parseIp(server.config.name, server.config.port);
-        try server.stream_server.listen(localhost);
-
         server.id = utils.rand_id();
         server.incoming_connections = std.AutoHashMap(*connections.InConnection, void).init(default.allocator);
         server.outgoing_connections = std.AutoHashMap(*connections.OutConnection, void).init(default.allocator);
         server.connection_router = std.AutoHashMap(ID, u64).init(default.allocator);
+
+        std.log.info("Connecting to {s}:{}", .{ server.config.name, server.config.port });
+        const localhost = try net.Address.parseIp(server.config.name, server.config.port);
+        try server.stream_server.listen(localhost);
+
         std.log.info("my id: {any}", .{server.id});
     }
 
