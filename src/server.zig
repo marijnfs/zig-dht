@@ -28,8 +28,8 @@ pub const Server = struct {
     pub fn get_outgoing_connection(server: *Server, guid: u64) !*connections.OutConnection {
         var it = server.outgoing_connections.keyIterator();
         while (it.next()) |conn| {
-            if (conn.guid == guid)
-                return conn;
+            if (conn.*.guid == guid)
+                return conn.*;
         }
         return error.NotFound;
     }

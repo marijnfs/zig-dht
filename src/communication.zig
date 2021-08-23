@@ -34,6 +34,8 @@ pub const InboundMessage = struct {
     content: []u8,
 };
 
+/// >>>>>>>
+/// >>>>>>>
 pub fn process_forward(message: communication.Message, guid: u64) !void {
     const content = message.content;
 
@@ -44,7 +46,7 @@ pub fn process_forward(message: communication.Message, guid: u64) !void {
             const addr = conn.address();
             std.log.info("ping Addr: {any}", .{addr});
 
-            const return_message = communication.Message{ .content = .{ .pong = .{ .source_id = default.server.id, .apparent_ip = addr } } };
+            const return_message = communication.Message{ .target_id = ping.source_id, .source_id = default.server.id, .content = .{ .pong = .{ .source_id = default.server.id, .apparent_ip = addr } } };
 
             const envelope = communication.Envelope{
                 .target = .{ .guid = guid },
@@ -55,6 +57,25 @@ pub fn process_forward(message: communication.Message, guid: u64) !void {
             std.log.info("reply env: {any}", .{envelope.payload});
 
             try jobs.enqueue(.{ .send_message = envelope });
+        },
+        else => {
+            std.log.warn("invalid forward message {any}", .{message});
+        },
+    }
+}
+
+/// <<<<<<<
+/// <<<<<<<
+pub fn process_backward(message: communication.Message, guid: u64) !void {
+    const content = message.content;
+
+    switch (content) {
+        .pong => |pong| {
+            std.log.info("got pong: {}", .{pong});
+            const conn = try default.server.get_outgoing_connection(guid);
+            const addr = conn.address;
+            conn.id = pong.source_id;
+            std.log.info("setting source id, for {s}: {any}", .{ addr, conn.id });
         },
         else => {
             std.log.warn("invalid forward message {any}", .{message});

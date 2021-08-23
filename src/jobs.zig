@@ -36,6 +36,10 @@ pub const Job = union(enum) {
         guid: u64,
         message: communication.Message,
     },
+    process_backward: struct {
+        guid: u64,
+        message: communication.Message,
+    },
 
     fn work(self: *Job) !void {
         switch (self.*) {
@@ -45,8 +49,15 @@ pub const Job = union(enum) {
                 try communication.process_forward(message, guid);
                 //this means the message is for us
                 //most of the main domain code is here
-
             },
+            .process_backward => |guid_message| {
+                const message = guid_message.message;
+                const guid = guid_message.guid;
+                try communication.process_backward(message, guid);
+                //this means the message is for us
+                //most of the main domain code is here
+            },
+
             .connect => |address| {
                 std.log.info("Connect {s}, sending ping: {any}", .{ address, default.server.id });
                 const out_connection = try default.server.connect_and_add(address);
@@ -119,25 +130,15 @@ pub const Job = union(enum) {
             },
             .forward_message => |inbound_message| {
                 var data_slice = inbound_message.content;
-                if (data_slice.len < @sizeOf(ID)) {
-                    std.log.info("message dropped", .{});
+
+                var hash_slice = try calculate_and_check_hash(data_slice);
+
+                if ((try model.hashes_seen.getOrPut(hash_slice.hash)).found_existing) {
+                    std.log.info("message dropped, already seen", .{});
                     return;
                 }
 
-                const reported_hash: ID = data_slice[0..@sizeOf(ID)].*;
-                if ((try model.hashes_seen.getOrPut(reported_hash)).found_existing) {
-                    std.log.info("message dropped, already seed", .{});
-                    return;
-                }
-
-                const calculated_hash = utils.calculate_hash(data_slice[@sizeOf(ID)..]);
-                if (!utils.id_is_equal(reported_hash, calculated_hash)) {
-                    std.log.info("message dropped, hash doesn't match", .{});
-                    return;
-                }
-
-                std.log.info("message len: {}", .{data_slice.len});
-                var message = try serial.deserialise(communication.Message, &data_slice);
+                var message = try serial.deserialise(communication.Message, &hash_slice.slice);
 
                 if (utils.id_is_zero(message.target_id) or utils.id_is_equal(message.target_id, default.server.id)) {
                     std.log.info("message is for me", .{});
@@ -148,14 +149,39 @@ pub const Job = union(enum) {
 
                 std.log.info("process forward message: {any}", .{message});
             },
-            .backward_message => |message| {
-                var data_slice = message.content;
+            .backward_message => |inbound_message| {
+                var data_slice = inbound_message.content;
                 // const hash = message.hash;
 
-                const inbound_message = try serial.deserialise(communication.Message, &data_slice);
+                var hash_slice = try calculate_and_check_hash(data_slice);
+                data_slice = hash_slice.slice;
+                const message = try serial.deserialise(communication.Message, &data_slice);
 
                 std.log.info("process backward message: {any}", .{inbound_message});
+
+                if (utils.id_is_equal(message.target_id, default.server.id)) {
+                    try jobs.enqueue(.{ .process_backward = .{ .guid = inbound_message.guid, .message = message } });
+                } else {
+                    try jobs.enqueue(.{ .send_message = .{ .target = .{ .id = message.target_id }, .payload = .{ .raw = data_slice } } });
+                }
             },
         }
     }
 };
+
+const RetType = struct { hash: Hash, slice: []u8 };
+fn calculate_and_check_hash(data_slice: []u8) !RetType {
+    if (data_slice.len < @sizeOf(Hash)) {
+        std.log.info("message dropped", .{});
+        return error.TooShort;
+    }
+
+    const reported_hash: Hash = data_slice[0..@sizeOf(Hash)].*;
+
+    const calculated_hash = utils.calculate_hash(data_slice[@sizeOf(Hash)..]);
+    if (!utils.id_is_equal(reported_hash, calculated_hash)) {
+        std.log.info("message dropped, hash doesn't match", .{});
+        return error.FalseHash;
+    }
+    return RetType{ .hash = calculated_hash, .slice = data_slice[@sizeOf(Hash)..] };
+}
