@@ -4,6 +4,11 @@ const net = std.net;
 usingnamespace @import("index.zig");
 
 pub const Server = struct {
+    const Config = struct {
+        name: []u8 = undefined,
+        port: u16 = 0,
+    };
+
     config: Config,
     state: State = .Init,
     stream_server: net.StreamServer = undefined,
@@ -57,9 +62,6 @@ pub const Server = struct {
             var stream_connection = try server.stream_server.accept();
             var connection = try default.allocator.create(connections.InConnection); //append the frame before assigning to it, it can't move in Memory
 
-            // Discover this ip
-            try routing.add_ip_seen(stream_connection.address);
-
             connection.* = .{
                 .stream_connection = stream_connection,
                 .guid = get_guid(),
@@ -86,11 +88,6 @@ pub const Server = struct {
     pub fn deinit(server: *Server) void {
         server.stream_server.deinit();
     }
-
-    const Config = struct {
-        name: []u8 = undefined,
-        port: u16 = 0,
-    };
 
     const State = enum {
         Init,

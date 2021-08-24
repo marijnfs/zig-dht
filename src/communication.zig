@@ -10,9 +10,7 @@ pub const Message = struct {
 };
 
 pub const Content = union(enum) {
-    ping: struct {
-        source_id: ID,
-    },
+    ping: struct { source_id: ID, source_port: u16 },
     pong: struct {
         source_id: ID,
         apparent_ip: std.net.Address,
@@ -42,8 +40,13 @@ pub fn process_forward(message: communication.Message, guid: u64) !void {
     switch (content) {
         .ping => |ping| {
             std.log.info("got ping: {}", .{ping});
+
+            // Resolve the possible connection address
             const conn = try default.server.get_incoming_connection(guid);
-            const addr = conn.address();
+            var addr = conn.address();
+            addr.setPort(ping.source_port);
+            try routing.add_ip_seen(addr);
+
             std.log.info("ping Addr: {any}", .{addr});
 
             const return_message = communication.Message{ .target_id = ping.source_id, .source_id = default.server.id, .content = .{ .pong = .{ .source_id = default.server.id, .apparent_ip = addr } } };
