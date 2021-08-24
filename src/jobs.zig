@@ -30,8 +30,8 @@ pub fn job_loop() void {
 pub const Job = union(enum) {
     connect: std.net.Address,
     send_message: communication.Envelope,
-    forward_message: communication.InboundMessage,
-    backward_message: communication.InboundMessage,
+    inbound_forward_message: communication.InboundMessage,
+    inbound_backward_message: communication.InboundMessage,
     process_forward: struct {
         guid: u64,
         message: communication.Message,
@@ -78,8 +78,7 @@ pub const Job = union(enum) {
                         //calculate the hash
                         const hash = utils.calculate_hash(slice[@sizeOf(Hash)..]);
                         std.mem.copy(u8, slice[0..@sizeOf(Hash)], &hash);
-                        var tmp_slice = slice;
-                        std.log.info("deserialise before sending: {}", .{try serial.deserialise(communication.Message, &tmp_slice)});
+                        std.log.info("serialized len before sending: {}", .{slice.len});
                         break :blk slice;
                     },
                 };
@@ -102,7 +101,7 @@ pub const Job = union(enum) {
                             }
                         }
 
-                        std.log.info("Wrote message {s}", .{data});
+                        std.log.info("Wrote message {} {s}", .{ data.len, data });
                     },
                     .id => |id| {
                         var out_it = default.server.outgoing_connections.keyIterator();
@@ -128,7 +127,7 @@ pub const Job = union(enum) {
                     },
                 }
             },
-            .forward_message => |inbound_message| {
+            .inbound_forward_message => |inbound_message| {
                 var data_slice = inbound_message.content;
 
                 var hash_slice = try calculate_and_check_hash(data_slice);
@@ -149,7 +148,7 @@ pub const Job = union(enum) {
 
                 std.log.info("process forward message: {any}", .{message});
             },
-            .backward_message => |inbound_message| {
+            .inbound_backward_message => |inbound_message| {
                 var data_slice = inbound_message.content;
                 // const hash = message.hash;
 
