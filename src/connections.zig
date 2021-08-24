@@ -26,6 +26,7 @@ pub const InConnection = struct {
     }
 
     pub fn write(connection: *InConnection, buf: []u8) !void {
+        std.log.info("write n:{}", .{buf.len});
         const len = try connection.stream_connection.stream.write(buf);
         if (len != buf.len)
             return error.WriteError;
@@ -44,10 +45,6 @@ pub const InConnection = struct {
 
         while (true) {
             var len = try stream_connection.stream.read(&buf);
-            std.log.info("read incoming forward len:{} {s}", .{ buf.len, buf[0..len] });
-            // std.log.info("read {s}", .{buf[0..len]});
-            // const hash = utils.calculate_hash(buf[0..len]);
-            // try default.server.connection_router.put(hash, connection.guid);
             try jobs.enqueue(.{ .inbound_forward_message = .{ .guid = connection.guid, .content = try std.mem.dupe(default.allocator, u8, buf[0..len]) } });
 
             if (len == 0)
@@ -70,6 +67,8 @@ pub const OutConnection = struct {
     };
 
     pub fn write(connection: *OutConnection, buf: []u8) !void {
+        std.log.info("write n:{}", .{buf.len});
+
         const len = try connection.stream_connection.write(buf);
         if (len != buf.len)
             return error.WriteError;
@@ -87,9 +86,8 @@ pub const OutConnection = struct {
 
         while (true) {
             var len = try connection.stream_connection.read(&buf);
-            std.log.info("read incoming backward len:{} {s}", .{ buf.len, buf[0..len] });
-            // const hash = utils.calculate_hash(buf[0..len]);
-            // try default.server.connection_router.put(hash, connection.guid);
+            std.log.info("read incoming backward len:{} {any}", .{ buf.len, buf[0..len] });
+
             try jobs.enqueue(.{ .inbound_backward_message = .{ .guid = connection.guid, .content = try std.mem.dupe(default.allocator, u8, buf[0..len]) } });
 
             if (len == 0)

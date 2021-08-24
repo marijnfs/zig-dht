@@ -213,7 +213,7 @@ test "union" {
 }
 
 test "message" {
-    const return_message = communication.Message{ .content = .{ .pong = .{ .source_id = utils.rand_id(), .apparent_ip = undefined } } };
+    const return_message = communication.Message{ .target_id = utils.rand_id(), .content = .{ .pong = .{ .source_id = utils.rand_id(), .apparent_ip = undefined } } };
 
     const envelope = communication.Envelope{
         .target = .{ .guid = 52 },

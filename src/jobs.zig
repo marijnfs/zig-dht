@@ -74,12 +74,14 @@ pub const Job = union(enum) {
                     .raw => |raw_data| raw_data,
                     .message => |message| blk: {
                         std.log.info("test message: {}", .{message});
-                        var slice = try serial.serialise(message);
-                        //calculate the hash
-                        const hash = utils.calculate_hash(slice[@sizeOf(Hash)..]);
-                        std.mem.copy(u8, slice[0..@sizeOf(Hash)], &hash);
-                        std.log.info("serialized len before sending: {}", .{slice.len});
-                        break :blk slice;
+
+                        const serial_message = try serial.serialise(message);
+                        const hash = utils.calculate_hash(serial_message);
+
+                        const hash_message = try default.allocator.alloc(u8, hash.len + serial_message.len);
+                        std.mem.copy(u8, hash_message[0..hash.len], &hash);
+                        std.mem.copy(u8, hash_message[hash.len..], serial_message);
+                        break :blk hash_message;
                     },
                 };
                 switch (envelope.target) {
@@ -101,7 +103,7 @@ pub const Job = union(enum) {
                             }
                         }
 
-                        std.log.info("Wrote message {} {s}", .{ data.len, data });
+                        std.log.info("Wrote message {} {any}", .{ data.len, data });
                     },
                     .id => |id| {
                         var out_it = default.server.outgoing_connections.keyIterator();
@@ -176,11 +178,11 @@ fn calculate_and_check_hash(data_slice: []u8) !RetType {
     }
 
     const reported_hash: Hash = data_slice[0..@sizeOf(Hash)].*;
-
-    const calculated_hash = utils.calculate_hash(data_slice[@sizeOf(Hash)..]);
+    const body_slice = data_slice[@sizeOf(Hash)..];
+    const calculated_hash = utils.calculate_hash(body_slice);
     if (!utils.id_is_equal(reported_hash, calculated_hash)) {
         std.log.info("message dropped, hash doesn't match", .{});
         return error.FalseHash;
     }
-    return RetType{ .hash = calculated_hash, .slice = data_slice[@sizeOf(Hash)..] };
+    return RetType{ .hash = calculated_hash, .slice = body_slice };
 }
