@@ -2,20 +2,21 @@ const std = @import("std");
 usingnamespace @import("index.zig");
 
 // Message contents
-pub const Message = struct {
-    hash: ID = std.mem.zeroes(ID), //during forward, this is the hash of the message (minus the hash), during backward it is the reply hash
-    target_id: ID = std.mem.zeroes(ID),
-    source_id: ID = std.mem.zeroes(ID),
-    content: Content,
-};
-
 pub const Content = union(enum) {
     ping: struct { source_id: ID, source_port: u16 },
     pong: struct {
         source_id: ID,
         apparent_ip: std.net.Address,
     },
-    raw: []u8,
+    get_known_ips: usize,
+    send_known_ips: []std.net.Address,
+};
+
+pub const Message = struct {
+    hash: ID = std.mem.zeroes(ID), //during forward, this is the hash of the message (minus the hash), during backward it is the reply hash
+    target_id: ID = std.mem.zeroes(ID),
+    source_id: ID = std.mem.zeroes(ID),
+    content: Content,
 };
 
 pub const Envelope = struct { target: union(enum) {
@@ -28,7 +29,7 @@ payload: union(enum) {
 } };
 
 pub const InboundMessage = struct {
-    guid: u64,
+    guid: u64, //relevant connection guid
     content: []u8,
 };
 

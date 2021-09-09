@@ -17,6 +17,8 @@ fn server_thread_function() !void {
 pub fn main() !void {
     utils.init_prng();
 
+    try timer.start_timer_thread();
+
     var args = try std.process.argsAlloc(default.allocator);
     defer std.process.argsFree(default.allocator, args);
 
@@ -38,7 +40,6 @@ pub fn main() !void {
     std.log.info("Starting Job loop", .{});
     jobs.job_loop();
     std.log.info("Done", .{});
-
     try await server_frame;
 }
 

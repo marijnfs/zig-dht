@@ -85,6 +85,7 @@ pub const Server = struct {
         return out_connection;
     }
 
+
     pub fn deinit(server: *Server) void {
         server.stream_server.deinit();
     }
