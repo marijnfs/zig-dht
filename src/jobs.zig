@@ -5,7 +5,7 @@
 const std = @import("std");
 usingnamespace @import("index.zig");
 
-var job_queue = AtomicQueue(Job).init(default.allocator);
+pub var job_queue = AtomicQueue(Job).init(default.allocator);
 
 pub fn enqueue(job: Job) !void {
     // logger.log_fmt("queuing job: {}\n", .{job});

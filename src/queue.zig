@@ -56,6 +56,10 @@ pub fn AtomicQueue(comptime T: type) type {
             return self._empty();
         }
 
+        pub fn slice(self: *Self) []T {
+            return self.buffer.items[self.front..self.back];
+        }
+
         pub fn size(self: *Self) usize {
             const held = self.mutex.acquire();
             defer held.release();
