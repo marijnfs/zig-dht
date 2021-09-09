@@ -1,7 +1,12 @@
 const std = @import("std");
 const net = std.net;
 
-usingnamespace @import("index.zig");
+const index = @import("index.zig");
+const default = index.default;
+const connections = index.connections;
+const utils = index.utils;
+
+const ID = index.ID;
 
 pub const Server = struct {
     const Config = struct {
@@ -64,7 +69,7 @@ pub const Server = struct {
 
             connection.* = .{
                 .stream_connection = stream_connection,
-                .guid = get_guid(),
+                .guid = utils.get_guid(),
             };
             connection.frame = async connection.connection_read_loop();
             try server.incoming_connections.putNoClobber(connection, {});
@@ -78,13 +83,12 @@ pub const Server = struct {
         out_connection.* = .{
             .address = address,
             .stream_connection = try net.tcpConnectToAddress(address),
-            .guid = get_guid(),
+            .guid = utils.get_guid(),
         };
         out_connection.frame = async out_connection.connection_read_loop();
         try server.outgoing_connections.putNoClobber(out_connection, {});
         return out_connection;
     }
-
 
     pub fn deinit(server: *Server) void {
         server.stream_server.deinit();

@@ -20,8 +20,6 @@ pub const default = struct {
     pub var server: @import("server.zig").Server = undefined;
 };
 
-pub const get_guid = utils.get_guid;
-
 // Common types
 const ID_SIZE = 32;
 pub const ID = [ID_SIZE]u8;

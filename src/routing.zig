@@ -1,6 +1,10 @@
 const std = @import("std");
 
-usingnamespace @import("index.zig");
+const index = @import("index.zig");
+const default = index.default;
+const utils = index.utils;
+
+const Hash = index.Hash;
 
 pub var ip_seen = std.AutoHashMap(Hash, std.net.Address).init(default.allocator);
 

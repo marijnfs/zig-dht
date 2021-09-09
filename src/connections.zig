@@ -1,13 +1,17 @@
 const std = @import("std");
 const net = std.net;
 
-usingnamespace @import("index.zig");
+const index = @import("index.zig");
+const default = index.default;
+const jobs = index.jobs;
+
+const ID = index.ID;
 
 const READ_BUF_SIZE = 1024 * 128; //128 kb
 
-pub fn route_hash(hash: ID) ?u64 {
-    return connection_router.get(hash);
-}
+// pub fn route_hash(hash: ID) ?u64 {
+//     return connection_router.get(hash);
+// }
 
 pub const InConnection = struct {
     stream_connection: net.StreamServer.Connection,

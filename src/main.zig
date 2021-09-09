@@ -2,7 +2,11 @@ pub const io_mode = .evented; // use event loop
 
 const std = @import("std");
 
-usingnamespace @import("index.zig");
+const index = @import("index.zig");
+const default = index.default;
+const utils = index.utils;
+const timer = index.timer;
+const jobs = index.jobs;
 
 fn server_thread_function() !void {
     // default.server = .{ .config = .{ .name = try std.mem.dupe(default.allocator, u8, "127.0.0.1"), .port = 30015 } };

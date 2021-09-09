@@ -1,5 +1,10 @@
 const std = @import("std");
-usingnamespace @import("index.zig");
+const index = @import("index.zig");
+const default = index.default;
+const communication = index.communication;
+const utils = index.utils;
+
+const ID = index.ID;
 
 pub fn deserialise(comptime T: type, msg_ptr: *[]u8) !T {
     const msg = msg_ptr.*;
@@ -36,7 +41,7 @@ pub fn deserialise(comptime T: type, msg_ptr: *[]u8) !T {
                 if (comptime std.meta.sentinel(T) == null) {
                     t = try default.allocator.alloc(C, len);
                 } else {
-                    t = try allocator.allocSentinel(C, len, 0);
+                    t = try default.allocator.allocSentinel(C, len, 0);
                 }
                 for (t) |*e| {
                     e.* = try deserialise(C, msg_ptr);

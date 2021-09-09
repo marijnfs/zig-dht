@@ -1,5 +1,12 @@
 const std = @import("std");
-usingnamespace @import("index.zig");
+
+const index = @import("index.zig");
+const default = index.default;
+const jobs = index.jobs;
+const communication = index.communication;
+const routing = index.routing;
+
+const ID = index.ID;
 
 // Message contents
 pub const Content = union(enum) {

@@ -3,7 +3,19 @@
 // These Jobs form the main synchronising organising principle. Jobs can do complex tasks as they are guaranteed to operate alone.
 
 const std = @import("std");
-usingnamespace @import("index.zig");
+
+const index = @import("index.zig");
+const default = index.default;
+const communication = index.communication;
+const serial = index.serial;
+const utils = index.utils;
+const connections = index.connections;
+const model = index.model;
+const jobs = index.jobs;
+
+const AtomicQueue = index.AtomicQueue;
+const ID = index.ID;
+const Hash = index.Hash;
 
 pub var job_queue = AtomicQueue(Job).init(default.allocator);
 

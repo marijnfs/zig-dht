@@ -1,7 +1,9 @@
 // Staging area; where new functions that don't have a place yet can be put
 
 const std = @import("std");
-usingnamespace @import("index.zig");
+const index = @import("index.zig");
+const default = index.default;
+const jobs = index.jobs;
 
 pub fn expand_connections() void {
     const n_connections = count_connections();

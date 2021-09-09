@@ -1,6 +1,7 @@
 const std = @import("std");
 
-usingnamespace @import("index.zig");
+const index = @import("index.zig");
+const default = index.default;
 
 const Timer = struct { alarm: i64 = 0, callback: fn () void, delay: i64 = 0 };
 
@@ -24,7 +25,7 @@ pub fn timer_thread_function() !void {
                 }
             }
         } else {
-            std.time.sleep(1000); // short sleep
+            // std.time.sleep(1000); // short sleep
         }
     }
 }
