@@ -1,7 +1,10 @@
 // unique id for message work
 
 const std = @import("std");
-const ID = @import("index.zig").ID;
+const index = @import("index.zig");
+const default = index.default;
+
+const ID = index.ID;
 
 var rng: std.rand.DefaultPrng = undefined;
 var root_guid: u64 = undefined;
@@ -71,4 +74,21 @@ pub fn id_is_zero(id: ID) bool {
 
 pub fn id_is_equal(id: ID, id2: ID) bool {
     return std.mem.eql(u8, &id, &id2);
+}
+
+pub fn random_selection(K: usize, N: usize) ![]usize {
+    var ks = try default.allocator.alloc(usize, if (N > K) K else N);
+    var ns = try default.allocator.alloc(usize, N);
+    defer default.allocator.free(ns);
+    var i: usize = 0;
+    while (i < ns.len) : (i += 1) {
+        ns[i] = i;
+    }
+
+    rng.random.shuffle(usize, ns);
+    var k: usize = 0;
+    while (k < ks.len) : (k += 1) {
+        ks[k] = ns[k];
+    }
+    return ks;
 }

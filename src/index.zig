@@ -18,6 +18,8 @@ pub const default = struct {
 
     // Main server instance
     pub var server: @import("server.zig").Server = undefined;
+
+    pub const target_connections = 8;
 };
 
 // Common types

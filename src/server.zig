@@ -90,6 +90,15 @@ pub const Server = struct {
         return out_connection;
     }
 
+    pub fn is_connected_to(server: *Server, address: net.Address) bool {
+        var it = server.outgoing_connections.keyIterator();
+        while (it.next()) |conn| {
+            if (std.net.Address.eql(conn.*.address, address))
+                return true;
+        }
+        return false;
+    }
+
     pub fn deinit(server: *Server) void {
         server.stream_server.deinit();
     }

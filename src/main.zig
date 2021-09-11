@@ -7,6 +7,7 @@ const default = index.default;
 const utils = index.utils;
 const timer = index.timer;
 const jobs = index.jobs;
+const staging = index.staging;
 
 fn server_thread_function() !void {
     // default.server = .{ .config = .{ .name = try std.mem.dupe(default.allocator, u8, "127.0.0.1"), .port = 30015 } };
@@ -18,8 +19,15 @@ fn server_thread_function() !void {
     std.log.info("Accepting frame", .{});
 }
 
+pub fn time_test() void {
+    std.log.info("timer", .{});
+}
 pub fn main() !void {
     utils.init_prng();
+
+    try timer.add_timer(1000, staging.expand_connections, false);
+    try timer.add_timer(2000, staging.refresh_finger_table, false);
+    try timer.add_timer(3000, staging.sync_finger_table, false);
 
     try timer.start_timer_thread();
 
