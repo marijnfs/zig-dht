@@ -22,6 +22,11 @@ pub const default = struct {
     pub const target_connections = 8;
 };
 
+pub fn init() void {
+    utils.init_prng();
+    
+}
+
 // Common types
 const ID_SIZE = 32;
 pub const ID = [ID_SIZE]u8;

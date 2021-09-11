@@ -9,15 +9,10 @@ const routing = index.routing;
 const ID = index.ID;
 
 // Message contents
-pub const Content = union(enum) {
-    ping: struct { source_id: ID, source_port: u16 },
-    pong: struct {
-        source_id: ID,
-        apparent_ip: std.net.Address,
-    },
-    get_known_ips: usize,
-    send_known_ips: []std.net.Address,
-};
+pub const Content = union(enum) { ping: struct { source_id: ID, source_port: u16 }, pong: struct {
+    source_id: ID,
+    apparent_ip: std.net.Address,
+}, get_known_ips: usize, send_known_ips: []std.net.Address, find: struct { id: ID, inclusive: u8 = 0 }, found: struct { id: ID, address: std.net.Address } };
 
 pub const Message = struct {
     hash: ID = std.mem.zeroes(ID), //during forward, this is the hash of the message (minus the hash), during backward it is the reply hash
@@ -53,11 +48,12 @@ pub fn process_forward(message: communication.Message, guid: u64) !void {
             const conn = try default.server.get_incoming_connection(guid);
             var addr = conn.address();
             addr.setPort(ping.source_port);
-            try routing.add_ip_seen(addr);
+            try routing.add_address_seen(addr);
 
             std.log.info("ping Addr: {any}", .{addr});
 
-            const return_message = communication.Message{ .target_id = ping.source_id, .source_id = default.server.id, .content = .{ .pong = .{ .source_id = default.server.id, .apparent_ip = addr } } };
+            const return_content: Content = .{ .pong = .{ .source_id = default.server.id, .apparent_ip = addr } };
+            const return_message = communication.Message{ .target_id = ping.source_id, .source_id = default.server.id, .content = return_content };
 
             const envelope = communication.Envelope{
                 .target = .{ .guid = guid },

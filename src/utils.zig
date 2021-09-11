@@ -10,6 +10,8 @@ var rng: std.rand.DefaultPrng = undefined;
 var root_guid: u64 = undefined;
 
 // Call this ones to initialize the Guid
+pub const hex = std.fmt.fmtSliceHexLower;
+
 pub fn init() void {
     const seed = std.crypto.random.int(u64);
     rng = std.rand.DefaultPrng.init(seed);

@@ -7,6 +7,7 @@ const default = index.default;
 const utils = index.utils;
 const timer = index.timer;
 const jobs = index.jobs;
+const routing = index.routing;
 const staging = index.staging;
 
 fn server_thread_function() !void {
@@ -22,12 +23,13 @@ fn server_thread_function() !void {
 pub fn time_test() void {
     std.log.info("timer", .{});
 }
-pub fn main() !void {
-    utils.init_prng();
 
-    try timer.add_timer(1000, staging.expand_connections, false);
-    try timer.add_timer(2000, staging.refresh_finger_table, false);
-    try timer.add_timer(3000, staging.sync_finger_table, false);
+pub fn main() !void {
+    index.init();
+
+    try timer.add_timer(5000, staging.expand_connections, true);
+    try timer.add_timer(2000, staging.refresh_finger_table, true);
+    try timer.add_timer(3000, staging.sync_finger_table, true);
 
     try timer.start_timer_thread();
 
@@ -43,11 +45,25 @@ pub fn main() !void {
     if (args.len > 3) {
         const port = try std.fmt.parseInt(u16, args[4], 0);
         const addr = try std.net.Address.parseIp(args[3], port);
+        try routing.add_address_seen(addr);
         try jobs.enqueue(.{ .connect = addr });
     }
 
+    try routing.init_finger_table();
+
     std.log.info("Spawning Server Thread..", .{});
     var server_frame = async server_thread_function();
+
+    std.log.info("{}", .{utils.hex(&default.server.id)});
+    std.log.info("{}", .{utils.hex(&utils.get_finger_id(default.server.id, 0))});
+    std.log.info("{}", .{utils.hex(&utils.get_finger_id(default.server.id, 1))});
+    std.log.info("{}", .{utils.hex(&utils.get_finger_id(default.server.id, 2))});
+    std.log.info("{}", .{utils.hex(&utils.get_finger_id(default.server.id, 3))});
+    std.log.info("{}", .{utils.hex(&utils.get_finger_id(default.server.id, 4))});
+    std.log.info("{}", .{utils.hex(&utils.get_finger_id(default.server.id, 5))});
+    std.log.info("{}", .{utils.hex(&utils.get_finger_id(default.server.id, 6))});
+    std.log.info("{}", .{utils.hex(&utils.get_finger_id(default.server.id, 7))});
+    std.log.info("{}", .{utils.hex(&utils.get_finger_id(default.server.id, 8))});
 
     std.log.info("Starting Job loop", .{});
     jobs.job_loop();
