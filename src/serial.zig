@@ -53,7 +53,6 @@ pub fn deserialise(comptime T: type, msg_ptr: *[]u8) !T {
         .Union => {
             if (comptime info.Union.tag_type) |TagType| {
                 const active_tag = try deserialise(std.meta.TagType(T), msg_ptr);
-                std.log.info("Deserialise: activetag: {} T:{}", .{ active_tag, TagType });
 
                 inline for (info.Union.fields) |field_info| {
                     if (@field(TagType, field_info.name) == active_tag) {
@@ -73,7 +72,6 @@ pub fn deserialise(comptime T: type, msg_ptr: *[]u8) !T {
         .Enum => {
             t = blk: {
                 var int_operand = try deserialise(u32, msg_ptr);
-                std.log.info("enum: {}", .{int_operand});
                 break :blk @intToEnum(T, @intCast(std.meta.TagType(T), int_operand));
             };
         },
@@ -82,7 +80,6 @@ pub fn deserialise(comptime T: type, msg_ptr: *[]u8) !T {
             if (bytes_mem.len > msg.len)
                 return error.FailedToDeserialise;
             std.mem.copy(u8, bytes_mem, msg[0..bytes_mem.len]);
-            std.log.info("int t: {} {s}", .{ t, msg[0..bytes_mem.len] });
             msg_ptr.* = msg[bytes_mem.len..];
         },
         .Optional => {
@@ -138,7 +135,6 @@ pub fn serialise_to_buffer(t: anytype, buf: *std.ArrayList(u8)) !void {
         .Union => {
             if (info.Union.tag_type) |TagType| {
                 const active_tag = std.meta.activeTag(t);
-                std.log.info("union tag: {} | {}", .{ @as(std.meta.TagType(T), active_tag), TagType });
                 try serialise_to_buffer(@as(std.meta.TagType(T), active_tag), buf);
 
                 // This manual inline loop is currently needed to find the right 'field' for the union
@@ -155,13 +151,9 @@ pub fn serialise_to_buffer(t: anytype, buf: *std.ArrayList(u8)) !void {
             }
         },
         .Enum => {
-            std.log.info("write enum: t:{} i32:{}", .{ t, @intCast(i32, @enumToInt(t)) });
-
             try serialise_to_buffer(@intCast(i32, @enumToInt(t)), buf);
         },
         .Int, .Float => {
-            std.log.info("write int: {}", .{t});
-
             try buf.appendSlice(std.mem.asBytes(&t));
         },
         .Optional => {

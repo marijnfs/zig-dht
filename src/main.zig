@@ -49,21 +49,11 @@ pub fn main() !void {
         try jobs.enqueue(.{ .connect = addr });
     }
 
-    try routing.init_finger_table();
-
     std.log.info("Spawning Server Thread..", .{});
     var server_frame = async server_thread_function();
+    std.log.info("{Server ID}", .{utils.hex(&default.server.id)});
 
-    std.log.info("{}", .{utils.hex(&default.server.id)});
-    std.log.info("{}", .{utils.hex(&utils.get_finger_id(default.server.id, 0))});
-    std.log.info("{}", .{utils.hex(&utils.get_finger_id(default.server.id, 1))});
-    std.log.info("{}", .{utils.hex(&utils.get_finger_id(default.server.id, 2))});
-    std.log.info("{}", .{utils.hex(&utils.get_finger_id(default.server.id, 3))});
-    std.log.info("{}", .{utils.hex(&utils.get_finger_id(default.server.id, 4))});
-    std.log.info("{}", .{utils.hex(&utils.get_finger_id(default.server.id, 5))});
-    std.log.info("{}", .{utils.hex(&utils.get_finger_id(default.server.id, 6))});
-    std.log.info("{}", .{utils.hex(&utils.get_finger_id(default.server.id, 7))});
-    std.log.info("{}", .{utils.hex(&utils.get_finger_id(default.server.id, 8))});
+    try routing.init_finger_table();
 
     std.log.info("Starting Job loop", .{});
     jobs.job_loop();

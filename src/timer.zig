@@ -23,7 +23,10 @@ pub fn timer_thread_function() !void {
         if (queue.peek()) |timer_| {
             // std.log.info("time {} {}", .{ std.time.milliTimestamp(), timer_ });
             if (std.time.milliTimestamp() > timer_.alarm) {
-                try timer_.callback();
+                timer_.callback() catch |err| {
+                    std.log.err("err {any}", .{err});
+                    @panic("");
+                };
                 if (timer_.delay > 0) {
                     var new_timer = timer_;
                     new_timer.alarm += timer_.delay;

@@ -85,7 +85,7 @@ pub const Job = union(enum) {
                 const data = switch (payload) {
                     .raw => |raw_data| raw_data,
                     .message => |message| blk: {
-                        std.log.info("test message: {}", .{message});
+                        std.log.info("send message: {}", .{message});
 
                         const serial_message = try serial.serialise(message);
                         const hash = utils.calculate_hash(serial_message);
