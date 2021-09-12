@@ -18,7 +18,7 @@ pub const Server = struct {
     state: State = .Init,
     stream_server: net.StreamServer = undefined,
     id: ID = std.mem.zeroes(ID),
-
+    apparent_address: std.net.Address = undefined,
     incoming_connections: std.AutoHashMap(*connections.InConnection, void) = undefined,
     outgoing_connections: std.AutoHashMap(*connections.OutConnection, void) = undefined,
 
@@ -42,6 +42,24 @@ pub const Server = struct {
                 return conn.*;
         }
         return error.NotFound;
+    }
+
+    pub fn get_closest_outgoing_connection(server: *Server, id: ID) ?*connections.OutConnection {
+        var best_connection: ?*connections.OutConnection = null;
+        var lowest_dist = std.mem.zeroes(ID);
+
+        var out_it = server.outgoing_connections.keyIterator();
+        while (out_it.next()) |connection| {
+            if (utils.id_is_zero(connection.*.id))
+                continue;
+
+            const dist = utils.xor(connection.*.id, id);
+            if (utils.id_is_zero(lowest_dist) or utils.less(dist, lowest_dist)) {
+                lowest_dist = dist;
+                best_connection = connection.*;
+            }
+        }
+        return best_connection;
     }
 
     pub fn initialize(server: *Server) !void {

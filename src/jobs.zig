@@ -118,20 +118,7 @@ pub const Job = union(enum) {
                         std.log.info("Wrote message {} {any}", .{ data.len, data });
                     },
                     .id => |id| {
-                        var out_it = default.server.outgoing_connections.keyIterator();
-
-                        var best_connection: ?*connections.OutConnection = null;
-                        var lowest_dist = std.mem.zeroes(ID);
-                        while (out_it.next()) |connection| {
-                            if (utils.id_is_zero(connection.*.id))
-                                continue;
-
-                            const dist = utils.xor(connection.*.id, default.server.id);
-                            if (utils.id_is_zero(lowest_dist) or utils.less(dist, lowest_dist)) {
-                                lowest_dist = dist;
-                                best_connection = connection.*;
-                            }
-                        }
+                        var best_connection = default.server.get_closest_outgoing_connection(id);
 
                         if (best_connection) |connection| {
                             try connection.*.write(data);
