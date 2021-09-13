@@ -11,7 +11,6 @@ const ID = index.ID;
 
 // Message contents
 pub const Content = union(enum) { ping: struct { source_id: ID, source_port: u16 }, pong: struct {
-    source_id: ID,
     apparent_ip: std.net.Address,
 }, get_known_ips: usize, send_known_ips: []std.net.Address, find: struct { id: ID, inclusive: u8 = 0 }, found: struct { id: ID, address: std.net.Address } };
 
@@ -93,7 +92,7 @@ pub fn process_forward(message: communication.Message, guid: u64) !void {
             std.log.info("got ping from addr: {any}", .{addr});
             std.log.info("source id seems: {}", .{utils.hex(&message.source_id)});
 
-            const return_content: Content = .{ .pong = .{ .source_id = default.server.id, .apparent_ip = addr } };
+            const return_content: Content = .{ .pong = .{ .apparent_ip = addr } };
             const return_message = communication.Message{ .target_id = message.source_id, .source_id = default.server.id, .content = return_content };
 
             const envelope = communication.Envelope{
@@ -122,7 +121,7 @@ pub fn process_backward(message: communication.Message, guid: u64) !void {
             std.log.info("got pong: {}", .{pong});
             const conn = try default.server.get_outgoing_connection(guid);
             const addr = conn.address;
-            conn.id = pong.source_id;
+            conn.id = message.source_id;
 
             var our_ip = pong.apparent_ip;
             our_ip.setPort(default.server.config.port); // set the port so the address becomes our likely external connection ip
