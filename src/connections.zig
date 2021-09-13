@@ -98,4 +98,16 @@ pub const OutConnection = struct {
                 break;
         }
     }
+
+    pub fn format(
+        self: *OutConnection,
+        comptime fmt: []const u8,
+        options: std.fmt.FormatOptions,
+        writer: anytype,
+    ) !void {
+        _ = fmt;
+        _ = options;
+
+        try writer.print("Conn[{}] = {s}", .{ utils.hex(self.id), self.address });
+    }
 };

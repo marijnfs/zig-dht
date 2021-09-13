@@ -14,6 +14,11 @@ pub fn expand_connections() !void {
     const n_connections = count_connections();
     std.log.info("n connection: {}", .{n_connections});
 
+    var it = default.server.outgoing_connections.keyIterator();
+    while (it.next()) |conn| {
+        std.log.info("conn: {}", .{conn.*.address});
+    }
+
     if (n_connections > default.target_connections)
         return;
 

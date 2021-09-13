@@ -90,7 +90,8 @@ pub fn process_forward(message: communication.Message, guid: u64) !void {
             addr.setPort(ping.source_port);
             try routing.add_address_seen(addr);
 
-            std.log.info("ping Addr: {any}", .{addr});
+            std.log.info("got ping from addr: {any}", .{addr});
+            std.log.info("source id seems: {}", .{utils.hex(&message.source_id)});
 
             const return_content: Content = .{ .pong = .{ .source_id = default.server.id, .apparent_ip = addr } };
             const return_message = communication.Message{ .target_id = message.source_id, .source_id = default.server.id, .content = return_content };
@@ -130,6 +131,7 @@ pub fn process_backward(message: communication.Message, guid: u64) !void {
         },
         .found => |found| {
             std.log.info("found result: {}", .{found});
+            @panic("got a found");
         },
         else => {
             std.log.warn("invalid forward message {any}", .{message});

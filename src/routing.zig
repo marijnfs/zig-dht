@@ -9,7 +9,7 @@ const Hash = index.Hash;
 
 pub var addresses_seen = std.AutoHashMap(Hash, std.net.Address).init(default.allocator);
 
-const FINGERS = 8;
+const FINGERS = 1;
 pub var finger_table = std.AutoHashMap(ID, struct {
     id: ID = std.mem.zeroes(ID),
     address: std.net.Address = undefined,

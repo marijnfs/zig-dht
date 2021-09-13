@@ -50,6 +50,7 @@ pub const Server = struct {
 
         var out_it = server.outgoing_connections.keyIterator();
         while (out_it.next()) |connection| {
+            std.log.info("trying to route, looking at connection {} {s}", .{ utils.hex(&connection.*.id), connection.*.address });
             if (utils.id_is_zero(connection.*.id))
                 continue;
 
@@ -83,6 +84,8 @@ pub const Server = struct {
         }
         while (true) {
             var stream_connection = try server.stream_server.accept();
+
+            std.log.info("accepting connection from {}", .{stream_connection});
             var connection = try default.allocator.create(connections.InConnection); //append the frame before assigning to it, it can't move in Memory
 
             connection.* = .{
@@ -94,6 +97,7 @@ pub const Server = struct {
             //time to schedule event loop to start connection
 
         }
+        @panic("loop ended");
     }
 
     pub fn connect_and_add(server: *Server, address: net.Address) !*connections.OutConnection {

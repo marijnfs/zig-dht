@@ -74,7 +74,7 @@ pub const Job = union(enum) {
                 std.log.info("Connect {s}, sending ping: {any}", .{ address, default.server.id });
                 const out_connection = try default.server.connect_and_add(address);
                 const content = communication.Content{ .ping = .{ .source_id = default.server.id, .source_port = default.server.config.port } };
-                const message = communication.Message{ .content = content };
+                const message = communication.Message{ .source_id = default.server.id, .content = content };
                 try enqueue(.{ .send_message = .{ .target = .{ .guid = out_connection.guid }, .payload = .{ .message = message } } });
             },
             // Multi function send message,
@@ -160,8 +160,11 @@ pub const Job = union(enum) {
                 std.log.info("process backward message: {any}", .{inbound_message});
 
                 if (utils.id_is_equal(message.target_id, default.server.id)) {
+                    std.log.info("for me, target_id: {}", .{utils.hex(&message.target_id)});
+
                     try jobs.enqueue(.{ .process_backward = .{ .guid = inbound_message.guid, .message = message } });
                 } else {
+                    std.log.info("pass on, target_id: {}", .{utils.hex(&message.target_id)});
                     try jobs.enqueue(.{ .send_message = .{ .target = .{ .id = message.target_id }, .payload = .{ .raw = data_slice } } });
                 }
             },
