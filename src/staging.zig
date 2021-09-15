@@ -12,15 +12,28 @@ const ID = index.ID;
 
 pub fn expand_connections() !void {
     const n_connections = count_connections();
-    std.log.info("n connection: {}", .{n_connections});
 
+    std.log.info("n connection: {}", .{n_connections});
+    // We're good
+    if (n_connections > default.target_connections)
+        return;
+
+    // Request more known ips
     var it = default.server.outgoing_connections.keyIterator();
     while (it.next()) |conn| {
         std.log.info("conn: {}", .{conn.*.address});
-    }
+        const content: communication.Content = .{ .get_known_ips = default.target_connections };
+        const message = communication.Message{ .target_id = std.mem.zeroes(ID), .source_id = default.server.id, .content = content };
 
-    if (n_connections > default.target_connections)
-        return;
+        const envelope = communication.Envelope{
+            .target = .{ .guid = conn.*.guid },
+            .payload = .{
+                .message = message,
+            },
+        };
+
+        try jobs.enqueue(.{ .send_message = envelope });
+    }
 
     const connections_to_add = default.target_connections - n_connections;
 

@@ -27,7 +27,7 @@ pub const Envelope = struct { target: union(enum) {
 }, //target output node
 payload: union(enum) {
     raw: []u8,
-    message: communication.Message,
+    message: Message,
 } };
 
 pub const InboundMessage = struct {
@@ -37,10 +37,36 @@ pub const InboundMessage = struct {
 
 /// >>>>>>>
 /// >>>>>>>
-pub fn process_forward(message: communication.Message, guid: u64) !void {
-    const content = message.content;
+pub fn process_forward(source_message: Message, guid: u64) !void {
+    const content = source_message.content;
 
     switch (content) {
+        .get_known_ips => |n_ips| {
+            // sanity check n_ips
+
+            var addresses = try routing.get_addresses_seen();
+            defer default.allocator.free(addresses);
+
+            var selection = try utils.random_selection(n_ips, addresses.len);
+            defer default.allocator.free(selection);
+
+            var ips = try default.allocator.alloc(std.net.Address, selection.len);
+
+            var i: usize = 0;
+            for (selection) |s| {
+                ips[i] = addresses[s];
+                i += 1;
+            }
+
+            // todo: a message creation function
+            //       only needs content,
+            //       target_source is often reply, can supply input message, guid
+            //       return can directly be a envelope
+            const return_content: Content = .{ .send_known_ips = ips };
+            const envelope = try build_reply(return_content, source_message, guid);
+
+            try jobs.enqueue(.{ .send_message = envelope });
+        },
         .find => |find| {
             // requester is trying to find a node closest to the search_id
             // We want to figure out if that's us (to our knowledge); if not we pass on the search
@@ -66,18 +92,11 @@ pub fn process_forward(message: communication.Message, guid: u64) !void {
             if (we_are_closest) {
                 // Return message
                 const return_content: Content = .{ .found = .{ .id = default.server.id, .address = default.server.apparent_address } };
-                const return_message = communication.Message{ .target_id = message.source_id, .source_id = default.server.id, .content = return_content };
-
-                const envelope = communication.Envelope{
-                    .target = .{ .guid = guid },
-                    .payload = .{
-                        .message = return_message,
-                    },
-                };
+                const envelope = try build_reply(return_content, source_message, guid);
                 try jobs.enqueue(.{ .send_message = envelope });
             } else {
                 // Pass on message to closest connections
-                try jobs.enqueue(.{ .send_message = .{ .target = .{ .guid = best_connection.?.guid }, .payload = .{ .message = message } } });
+                try jobs.enqueue(.{ .send_message = .{ .target = .{ .guid = best_connection.?.guid }, .payload = .{ .message = source_message } } });
             }
         },
         .ping => |ping| {
@@ -90,30 +109,24 @@ pub fn process_forward(message: communication.Message, guid: u64) !void {
             try routing.add_address_seen(addr);
 
             std.log.info("got ping from addr: {any}", .{addr});
-            std.log.info("source id seems: {}", .{utils.hex(&message.source_id)});
+            std.log.info("source id seems: {}", .{utils.hex(&source_message.source_id)});
 
             const return_content: Content = .{ .pong = .{ .apparent_ip = addr } };
-            const return_message = communication.Message{ .target_id = message.source_id, .source_id = default.server.id, .content = return_content };
+            const envelope = try build_reply(return_content, source_message, guid);
 
-            const envelope = communication.Envelope{
-                .target = .{ .guid = guid },
-                .payload = .{
-                    .message = return_message,
-                },
-            };
             std.log.info("reply env: {any}", .{envelope.payload});
 
             try jobs.enqueue(.{ .send_message = envelope });
         },
         else => {
-            std.log.warn("invalid forward message {any}", .{message});
+            std.log.warn("invalid forward message {any}", .{source_message});
         },
     }
 }
 
 /// <<<<<<<
 /// <<<<<<<
-pub fn process_backward(message: communication.Message, guid: u64) !void {
+pub fn process_backward(message: Message, guid: u64) !void {
     const content = message.content;
 
     switch (content) {
@@ -132,8 +145,28 @@ pub fn process_backward(message: communication.Message, guid: u64) !void {
             std.log.info("found result: {}", .{found});
             @panic("got a found");
         },
+        .send_known_ips => |known_ips| {
+            std.log.info("adding n 'known' addresses: {}", .{known_ips.len});
+
+            defer default.allocator.free(known_ips);
+            for (known_ips) |address| {
+                try routing.add_address_seen(address);
+            }
+        },
         else => {
             std.log.warn("invalid forward message {any}", .{message});
         },
     }
+}
+
+fn build_reply(content: Content, source_message: Message, guid: u64) !Envelope {
+    const reply = Message{ .target_id = source_message.source_id, .source_id = default.server.id, .content = content };
+
+    const envelope = Envelope{
+        .target = .{ .guid = guid },
+        .payload = .{
+            .message = reply,
+        },
+    };
+    return envelope;
 }

@@ -4,6 +4,7 @@ const net = std.net;
 const index = @import("index.zig");
 const default = index.default;
 const jobs = index.jobs;
+const utils = index.utils;
 
 const ID = index.ID;
 
