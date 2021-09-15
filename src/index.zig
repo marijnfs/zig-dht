@@ -22,9 +22,11 @@ pub const default = struct {
     pub const target_connections = 8;
 };
 
-pub fn init() void {
+pub fn init() !void {
     std.log.info("index.init()", .{});
     utils.init();
+
+    try routing.init_finger_table();
 }
 
 // Common types

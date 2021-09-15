@@ -71,7 +71,7 @@ pub const Job = union(enum) {
             },
 
             .connect => |address| {
-                std.log.info("Connect {s}, sending ping: {any}", .{ address, default.server.id });
+                std.log.info("Connect {s}, sending ping: {}", .{ address, utils.hex(&default.server.id) });
                 const out_connection = try default.server.connect_and_add(address);
                 const content = communication.Content{ .ping = .{ .source_id = default.server.id, .source_port = default.server.config.port } };
                 const message = communication.Message{ .source_id = default.server.id, .content = content };
@@ -123,7 +123,7 @@ pub const Job = union(enum) {
                         if (best_connection) |connection| {
                             try connection.*.write(data);
                         } else {
-                            std.log.info("Couldn't route {any}", .{id});
+                            std.log.info("Couldn't route {}", .{utils.hex(&id)});
                         }
                     },
                 }

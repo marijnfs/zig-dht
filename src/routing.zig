@@ -21,7 +21,7 @@ pub var finger_table = std.AutoHashMap(ID, Finger).init(default.allocator);
 
 pub fn init_finger_table() !void {
     var i: usize = 0;
-    std.log.info("finger table init, id is: {any}", .{default.server.id});
+    std.log.info("finger table init, id is: {}", .{utils.hex(&default.server.id)});
     while (i < FINGERS) : (i += 1) {
         const id = utils.get_finger_id(default.server.id, i);
         if (!finger_table.contains(id))

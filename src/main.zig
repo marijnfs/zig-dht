@@ -25,7 +25,7 @@ pub fn time_test() void {
 }
 
 pub fn main() !void {
-    index.init();
+    try index.init();
 
     try timer.add_timer(5000, staging.expand_connections, true);
     try timer.add_timer(2000, staging.refresh_finger_table, true);
@@ -52,8 +52,6 @@ pub fn main() !void {
     std.log.info("Spawning Server Thread..", .{});
     var server_frame = async server_thread_function();
     std.log.info("{Server ID}", .{utils.hex(&default.server.id)});
-
-    try routing.init_finger_table();
 
     std.log.info("Starting Job loop", .{});
     jobs.job_loop();
