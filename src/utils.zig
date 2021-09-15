@@ -6,13 +6,14 @@ const default = index.default;
 
 const ID = index.ID;
 
-var rng: std.rand.DefaultPrng = undefined;
+var rng = std.rand.DefaultPrng.init(0);
 var root_guid: u64 = undefined;
 
 // Call this ones to initialize the Guid
 pub const hex = std.fmt.fmtSliceHexLower;
 
 pub fn init() void {
+    std.log.info("utils.init", .{});
     const seed = std.crypto.random.int(u64);
     rng = std.rand.DefaultPrng.init(seed);
 
@@ -52,14 +53,9 @@ pub fn less(id1: ID, id2: ID) bool {
     return std.mem.order(u8, id1[0..], id2[0..]) == .lt;
 }
 
-var prng = std.rand.DefaultPrng.init(0);
-pub fn init_prng() void {
-    prng = std.rand.DefaultPrng.init(@intCast(u64, std.time.milliTimestamp()));
-}
-
 pub fn rand_id() ID {
     var id: ID = undefined;
-    prng.random.bytes(&id);
+    rng.random.bytes(&id);
     std.log.info("randid: {any}", .{id});
     return id;
 }
@@ -79,7 +75,8 @@ pub fn id_is_equal(id: ID, id2: ID) bool {
 }
 
 pub fn random_selection(K: usize, N: usize) ![]usize {
-    var ks = try default.allocator.alloc(usize, if (N > K) K else N);
+    std.log.info("random selection:{} {}", .{ K, N });
+    var ks = try default.allocator.alloc(usize, if (K < N) K else N);
     var ns = try default.allocator.alloc(usize, N);
     defer default.allocator.free(ns);
     var i: usize = 0;
@@ -91,6 +88,7 @@ pub fn random_selection(K: usize, N: usize) ![]usize {
     var k: usize = 0;
     while (k < ks.len) : (k += 1) {
         ks[k] = ns[k];
+        std.log.info("random k: {}, {}", .{ k, ns[k] });
     }
     return ks;
 }

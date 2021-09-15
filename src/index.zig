@@ -23,8 +23,8 @@ pub const default = struct {
 };
 
 pub fn init() void {
-    utils.init_prng();
-    
+    std.log.info("index.init()", .{});
+    utils.init();
 }
 
 // Common types

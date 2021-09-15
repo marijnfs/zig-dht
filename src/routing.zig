@@ -9,11 +9,15 @@ const Hash = index.Hash;
 
 pub var addresses_seen = std.AutoHashMap(Hash, std.net.Address).init(default.allocator);
 
+// Finger table
 const FINGERS = 1;
-pub var finger_table = std.AutoHashMap(ID, struct {
+
+const Finger = struct {
     id: ID = std.mem.zeroes(ID),
     address: std.net.Address = undefined,
-}).init(default.allocator);
+};
+
+pub var finger_table = std.AutoHashMap(ID, Finger).init(default.allocator);
 
 pub fn init_finger_table() !void {
     var i: usize = 0;
@@ -42,4 +46,33 @@ pub fn add_address_seen(addr: std.net.Address) !void {
     const addr_string = try std.fmt.allocPrint(default.allocator, "{}", .{addr});
     const hash = utils.calculate_hash(addr_string);
     try addresses_seen.put(hash, addr);
+}
+
+pub fn set_finger(id: ID, address: std.net.Address) !void {
+    if (!finger_table.contains(id)) {
+        return error.InvalidFinger;
+    }
+
+    const closest_id = try get_closest_id(id);
+    try finger_table.put(closest_id, .{ .id = id, .address = address });
+}
+
+pub fn get_closest_id(id: ID) !ID {
+    var it = finger_table.valueIterator();
+
+    var closest = std.mem.zeroes(ID);
+    while (it.next()) |value| {
+        if (utils.id_is_zero(value.*.id)) //value is not set yet,
+            continue;
+        const distance = utils.xor(id, value.*.id);
+        if (utils.id_is_zero(closest)) //always set
+            closest = distance;
+
+        if (utils.less(distance, closest))
+            closest = distance;
+    }
+
+    if (utils.id_is_zero(closest))
+        return error.NoClosestIdFound;
+    return closest;
 }

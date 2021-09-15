@@ -85,14 +85,14 @@ pub const Job = union(enum) {
                 const data = switch (payload) {
                     .raw => |raw_data| raw_data,
                     .message => |message| blk: {
-                        std.log.info("send message: {}", .{message});
-
                         const serial_message = try serial.serialise(message);
                         const hash = utils.calculate_hash(serial_message);
 
                         const hash_message = try default.allocator.alloc(u8, hash.len + serial_message.len);
                         std.mem.copy(u8, hash_message[0..hash.len], &hash);
                         std.mem.copy(u8, hash_message[hash.len..], serial_message);
+                        std.log.info("send message with hash of : {}", .{hash_message.len});
+
                         break :blk hash_message;
                     },
                 };

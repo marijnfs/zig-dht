@@ -142,8 +142,12 @@ pub fn process_backward(message: Message, guid: u64) !void {
             std.log.info("setting source id, for {s}: {any} {s}", .{ addr, conn.id, our_ip });
         },
         .found => |found| {
-            std.log.info("found result: {}", .{found});
-            @panic("got a found");
+            std.log.info("found result: {s}", .{found});
+
+            const id = found.id;
+            const address = found.address;
+
+            try routing.set_finger(id, address);
         },
         .send_known_ips => |known_ips| {
             std.log.info("adding n 'known' addresses: {}", .{known_ips.len});
