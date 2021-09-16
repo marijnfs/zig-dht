@@ -28,7 +28,7 @@ Targets are functional programs that have a direct usecase. Some have follow-ups
       - Bloom filter 
       - Most of the set will be old
         - Old set gets pruned in pruning ritual
-        - Oldest propertion gets moved to archive (meaning not acquired, assumed to be stored by users)
+        - Oldest proportion gets moved to archive (meaning not acquired, assumed to be stored by users)
         - Old transactions can be updated with a proof for Utreexo and then spent (proof and spend can be compressed)
     
 - Crypto Currency
