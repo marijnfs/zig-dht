@@ -32,7 +32,7 @@ pub fn job_loop() void {
             };
         } else {
             //sleep
-            std.os.nanosleep(0, 1000000);
+            std.time.sleep(10 * std.time.ns_per_ms);
         }
     }
 }
@@ -52,7 +52,7 @@ pub const Job = union(enum) {
         guid: u64,
         message: communication.Message,
     },
-
+    callback: fn () anyerror!void,
     fn work(self: *Job) !void {
         switch (self.*) {
             .process_forward => |guid_message| {
@@ -69,8 +69,14 @@ pub const Job = union(enum) {
                 //this means the message is for us
                 //most of the main domain code is here
             },
-
+            .callback => |callback| {
+                try callback();
+            },
             .connect => |address| {
+                if (std.net.Address.eql(address, default.server.apparent_address)) {
+                    std.log.info("Asked to connect to our own apparent ip, ignoring", .{});
+                    return;
+                }
                 std.log.info("Connect {s}, sending ping: {}", .{ address, utils.hex(&default.server.id) });
                 const out_connection = try default.server.connect_and_add(address);
                 const content = communication.Content{ .ping = .{ .source_id = default.server.id, .source_port = default.server.config.port } };

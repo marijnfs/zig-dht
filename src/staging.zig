@@ -96,18 +96,9 @@ pub fn count_connections() usize {
     return n_connections;
 }
 
-// pub fn clear_closed_connections(server: *Server) void {
-// Todo, don't use remove inside loop; invadlidates the iterator
+pub fn clear_closed_connections() !void {
+    // Todo, don't use remove inside loop; invadlidates the iterator
 
-// var it_in = server.incoming_connections.keyIterator();
-// while (it_in.next()) |conn| {
-//     if (conn.*.state == .Disconnected)
-//         server.out_going_connections.remove(conn.*);
-// }
-
-// var it_out = server.outgoing_connections.keyIterator();
-// while (it_out.next()) |conn| {
-//     if (conn.*.state == .Disconnected)
-//         server.out_going_connections.remove(conn.*);
-// }
-// }
+    try default.server.clean_incoming_connections();
+    try default.server.clean_outgoing_connections();
+}

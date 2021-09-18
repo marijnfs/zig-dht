@@ -124,6 +124,44 @@ pub const Server = struct {
         return false;
     }
 
+    pub fn clean_incoming_connections(server: *Server) !void {
+        var list = std.ArrayList(*connections.InConnection).init(default.allocator);
+        defer list.deinit();
+
+        var it = server.incoming_connections.keyIterator();
+        while (it.next()) |conn| {
+            try list.append(conn.*);
+        }
+
+        for (list.items) |conn| {
+            if (conn.state == .Disconnected) {
+                //todo, Closing the connection might still be needed, but it's not clear what state the stream is in
+                // if the stream is not open for writing, closing it causes errors
+                // conn.stream_connection.stream.close();
+                _ = server.incoming_connections.remove(conn);
+            }
+        }
+    }
+
+    pub fn clean_outgoing_connections(server: *Server) !void {
+        var list = std.ArrayList(*connections.OutConnection).init(default.allocator);
+        defer list.deinit();
+
+        var it = server.outgoing_connections.keyIterator();
+        while (it.next()) |conn| {
+            try list.append(conn.*);
+        }
+
+        for (list.items) |conn| {
+            if (conn.state == .Disconnected) {
+                //todo, Closing the connection might still be needed, but it's not clear what state the stream is in
+                // if the stream is not open for writing, closing it causes errors
+                // conn.stream_connection.close();
+                _ = server.outgoing_connections.remove(conn);
+            }
+        }
+    }
+
     pub fn deinit(server: *Server) void {
         server.stream_server.deinit();
     }

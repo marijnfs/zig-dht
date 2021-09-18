@@ -2,13 +2,15 @@
 
 
 # Next: (small) steps selected with priority to make progress.
-- rendering with zbox based code
-  - deal with input as well (done in zig-nng)
   
 # Backlog:
-- communication of known ips
+- rendering with zbox based code
+  - deal with input as well (done in zig-nng)
 
-# Done - mostly for context, needs to be cleaned over time
+
+# Done
 - implement timer code
 - connection strategies
+- communication of known ips
+
 
