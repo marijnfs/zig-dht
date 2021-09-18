@@ -96,7 +96,7 @@ pub const OutConnection = struct {
 
         while (true) {
             var len = try connection.stream_connection.read(&buf);
-            std.log.info("read incoming backward len:{} {any}", .{ buf.len, buf[0..len] });
+            std.log.info("read incoming backward len:{} ", .{buf.len});
 
             try jobs.enqueue(.{ .inbound_backward_message = .{ .guid = connection.guid, .content = try std.mem.dupe(default.allocator, u8, buf[0..len]) } });
 

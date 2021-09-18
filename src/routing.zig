@@ -55,6 +55,7 @@ pub fn set_finger(id: ID, address: std.net.Address) !void {
 
     const closest_id = try get_closest_id(id);
     try finger_table.put(closest_id, .{ .id = id, .address = address });
+    std.log.info("put id {} {}", .{ utils.hex(&id), address });
 }
 
 pub fn get_closest_id(id: ID) !ID {

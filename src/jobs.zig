@@ -74,7 +74,7 @@ pub const Job = union(enum) {
                 std.log.info("Connect {s}, sending ping: {}", .{ address, utils.hex(&default.server.id) });
                 const out_connection = try default.server.connect_and_add(address);
                 const content = communication.Content{ .ping = .{ .source_id = default.server.id, .source_port = default.server.config.port } };
-                const message = communication.Message{ .source_id = default.server.id, .content = content };
+                const message = communication.Message{ .source_id = default.server.id, .nonce = utils.get_guid(), .content = content };
                 try enqueue(.{ .send_message = .{ .target = .{ .guid = out_connection.guid }, .payload = .{ .message = message } } });
             },
             // Multi function send message,
@@ -114,8 +114,6 @@ pub const Job = union(enum) {
                                 break;
                             }
                         }
-
-                        std.log.info("Wrote message {} {any}", .{ data.len, data });
                     },
                     .id => |id| {
                         var best_connection = default.server.get_closest_outgoing_connection(id);
@@ -157,7 +155,7 @@ pub const Job = union(enum) {
                 data_slice = hash_slice.slice;
                 const message = try serial.deserialise(communication.Message, &data_slice);
 
-                std.log.info("process backward message: {any}", .{inbound_message});
+                std.log.info("process backward message: {any}", .{message});
 
                 if (utils.id_is_equal(message.target_id, default.server.id)) {
                     std.log.info("for me, target_id: {}", .{utils.hex(&message.target_id)});

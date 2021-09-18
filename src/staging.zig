@@ -23,7 +23,7 @@ pub fn expand_connections() !void {
     while (it.next()) |conn| {
         std.log.info("conn: {}", .{conn.*.address});
         const content: communication.Content = .{ .get_known_ips = default.target_connections };
-        const message = communication.Message{ .target_id = std.mem.zeroes(ID), .source_id = default.server.id, .content = content };
+        const message = communication.Message{ .target_id = std.mem.zeroes(ID), .source_id = default.server.id, .nonce = utils.get_guid(), .content = content };
 
         const envelope = communication.Envelope{
             .target = .{ .guid = conn.*.guid },
@@ -71,7 +71,7 @@ pub fn refresh_finger_table() !void {
     var it = routing.finger_table.keyIterator();
     while (it.next()) |id| {
         const content: communication.Content = .{ .find = .{ .id = id.*, .inclusive = 1 } };
-        const message = communication.Message{ .target_id = std.mem.zeroes(ID), .source_id = default.server.id, .content = content };
+        const message = communication.Message{ .target_id = std.mem.zeroes(ID), .source_id = default.server.id, .nonce = utils.get_guid(), .content = content };
 
         const envelope = communication.Envelope{
             .target = .{ .id = id.* },

@@ -18,6 +18,7 @@ pub const Message = struct {
     hash: ID = std.mem.zeroes(ID), //during forward, this is the hash of the message (minus the hash), during backward it is the reply hash
     target_id: ID = std.mem.zeroes(ID),
     source_id: ID = std.mem.zeroes(ID),
+    nonce: u64 = 0,
     content: Content,
 };
 
@@ -164,7 +165,7 @@ pub fn process_backward(message: Message, guid: u64) !void {
 }
 
 fn build_reply(content: Content, source_message: Message, guid: u64) !Envelope {
-    const reply = Message{ .target_id = source_message.source_id, .source_id = default.server.id, .content = content };
+    const reply = Message{ .target_id = source_message.source_id, .source_id = default.server.id, .nonce = utils.get_guid(), .content = content };
 
     const envelope = Envelope{
         .target = .{ .guid = guid },
