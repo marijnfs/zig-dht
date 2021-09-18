@@ -50,7 +50,7 @@ pub const Server = struct {
 
         var out_it = server.outgoing_connections.keyIterator();
         while (out_it.next()) |connection| {
-            std.log.info("trying to route, looking at connection {} {s}", .{ utils.hex(&connection.*.id), connection.*.address });
+            std.log.info("trying to route, looking at connection id:{} addr:{s}", .{ utils.hex(&connection.*.id), connection.*.address });
             if (utils.id_is_zero(connection.*.id))
                 continue;
 
@@ -101,6 +101,9 @@ pub const Server = struct {
     }
 
     pub fn connect_and_add(server: *Server, address: net.Address) !*connections.OutConnection {
+        errdefer {
+            std.log.info("Failed to connect to {}", .{address});
+        }
         var out_connection = try default.allocator.create(connections.OutConnection);
         out_connection.* = .{
             .address = address,

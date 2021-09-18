@@ -31,8 +31,6 @@ pub fn main() !void {
     try timer.add_timer(2000, staging.refresh_finger_table, true);
     try timer.add_timer(3000, staging.sync_finger_table, true);
 
-    try timer.start_timer_thread();
-
     var args = try std.process.argsAlloc(default.allocator);
     defer std.process.argsFree(default.allocator, args);
 
@@ -51,7 +49,12 @@ pub fn main() !void {
 
     std.log.info("Spawning Server Thread..", .{});
     var server_frame = async server_thread_function();
+    try routing.init_finger_table();
+
     std.log.info("{Server ID}", .{utils.hex(&default.server.id)});
+
+    // start timers
+    try timer.start_timer_thread();
 
     std.log.info("Starting Job loop", .{});
     jobs.job_loop();

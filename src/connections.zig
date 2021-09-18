@@ -74,6 +74,7 @@ pub const OutConnection = struct {
     pub fn write(connection: *OutConnection, buf: []u8) !void {
         std.log.info("write n:{}", .{buf.len});
 
+        errdefer connection.state = .Disconnected;
         const len = try connection.stream_connection.write(buf);
         if (len != buf.len)
             return error.WriteError;
@@ -84,6 +85,10 @@ pub const OutConnection = struct {
         std.log.info("connection to {}", .{connection.address});
         var buf: [READ_BUF_SIZE]u8 = undefined;
 
+        errdefer {
+            std.log.info("connection to {} failed", .{connection.address});
+            connection.state = .Disconnected;
+        }
         defer {
             std.log.info("stopping connection to {}", .{connection.address});
             connection.state = .Disconnected;

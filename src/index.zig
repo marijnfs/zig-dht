@@ -25,8 +25,7 @@ pub const default = struct {
 pub fn init() !void {
     std.log.info("index.init()", .{});
     utils.init();
-
-    try routing.init_finger_table();
+    model.init();
 }
 
 // Common types
