@@ -9,6 +9,7 @@ const timer = index.timer;
 const jobs = index.jobs;
 const routing = index.routing;
 const staging = index.staging;
+const readline = index.readline;
 
 fn server_thread_function() !void {
     // default.server = .{ .config = .{ .name = try std.mem.dupe(default.allocator, u8, "127.0.0.1"), .port = 30015 } };
@@ -56,6 +57,9 @@ pub fn main() !void {
 
     // start timers
     try timer.start_timer_thread();
+
+    // start readline
+    try readline.start_readline_thread();
 
     std.log.info("Starting Job loop", .{});
     jobs.job_loop();

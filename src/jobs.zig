@@ -40,6 +40,7 @@ pub fn job_loop() void {
 // Jobs
 // Main application logic
 pub const Job = union(enum) {
+    broadcast: communication.Message,
     connect: std.net.Address,
     send_message: communication.Envelope,
     inbound_forward_message: communication.InboundMessage,
@@ -61,6 +62,13 @@ pub const Job = union(enum) {
                 try communication.process_forward(message, guid);
                 //this means the message is for us
                 //most of the main domain code is here
+            },
+            .broadcast => |broadcast_message| {
+                std.log.info("broadcasting: {s}", .{broadcast_message});
+                var it = default.server.outgoing_connections.keyIterator();
+                while (it.next()) |conn| {
+                    try jobs.enqueue(.{ .send_message = .{ .target = .{ .guid = conn.*.guid }, .payload = .{ .message = broadcast_message } } });
+                }
             },
             .process_backward => |guid_message| {
                 const message = guid_message.message;
