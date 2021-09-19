@@ -100,12 +100,9 @@ pub const Job = union(enum) {
                     .raw => |raw_data| raw_data,
                     .message => |message| blk: {
                         const serial_message = try serial.serialise(message);
-                        const hash = utils.calculate_hash(serial_message);
-
-                        const hash_message = try default.allocator.alloc(u8, hash.len + serial_message.len);
-                        std.mem.copy(u8, hash_message[0..hash.len], &hash);
-                        std.mem.copy(u8, hash_message[hash.len..], serial_message);
-                        std.log.info("send message with hash of : {}", .{hash_message.len});
+                        defer default.allocator.free(serial_message);
+                        const hash_message = try calculate_and_add_hash(serial_message);
+                        std.log.info("send message with hash of: {}", .{hash_message.len});
 
                         break :blk hash_message;
                     },
@@ -199,4 +196,13 @@ fn calculate_and_check_hash(data_slice: []u8) !RetType {
         return error.FalseHash;
     }
     return RetType{ .hash = calculated_hash, .slice = body_slice };
+}
+
+fn calculate_and_add_hash(data_slice: []u8) ![]u8 {
+    const hash = utils.calculate_hash(data_slice);
+
+    const hash_message = try default.allocator.alloc(u8, hash.len + data_slice.len);
+    std.mem.copy(u8, hash_message[0..hash.len], &hash);
+    std.mem.copy(u8, hash_message[hash.len..], data_slice);
+    return hash_message;
 }

@@ -80,8 +80,12 @@ pub const OutConnection = struct {
             return error.WriteError;
     }
 
+    pub fn close(connection: *OutConnection) void {
+        connection.stream_connection.close();
+    }
+
     pub fn connection_read_loop(connection: *OutConnection) !void {
-        defer connection.stream_connection.close();
+        defer connection.close();
         std.log.info("connection to {}", .{connection.address});
         var buf: [READ_BUF_SIZE]u8 = undefined;
 

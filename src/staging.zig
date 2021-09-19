@@ -84,6 +84,17 @@ pub fn refresh_finger_table() !void {
     }
 }
 
+pub fn detect_self_connection() !void {
+    var it = default.server.outgoing_connections.keyIterator();
+    while (it.next()) |conn| {
+        std.log.info("comparing {} {}", .{ conn.*.address, default.server.apparent_address });
+        if (std.net.Address.eql(conn.*.address, default.server.apparent_address)) {
+            conn.*.close();
+            _ = default.server.outgoing_connections.remove(conn.*);
+        }
+    }
+}
+
 pub fn count_connections() usize {
     var n_connections = default.server.outgoing_connections.count();
 
