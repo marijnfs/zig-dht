@@ -45,6 +45,7 @@ pub const Job = union(enum) {
     send_message: communication.Envelope,
     inbound_forward_message: communication.InboundMessage,
     inbound_backward_message: communication.InboundMessage,
+    print: []u8,
     process_forward: struct {
         guid: u64,
         message: communication.Message,
@@ -62,6 +63,11 @@ pub const Job = union(enum) {
                 try communication.process_forward(message, guid);
                 //this means the message is for us
                 //most of the main domain code is here
+            },
+            .print => |print| {
+                const stdout = std.io.getStdOut().writer();
+                _ = try stdout.write(print);
+                _ = try stdout.write("\n");
             },
             .broadcast => |broadcast_message| {
                 std.log.info("broadcasting: {s}", .{broadcast_message});

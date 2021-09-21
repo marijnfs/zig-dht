@@ -45,6 +45,7 @@ pub fn process_forward(source_message: Message, guid: u64) !void {
         .broadcast => |broadcast| {
             std.log.info("broadcast: '{s}'", .{broadcast});
             try jobs.enqueue(.{ .broadcast = source_message });
+            try jobs.enqueue(.{ .print = broadcast });
         },
         .get_known_ips => |n_ips| {
             // sanity check n_ips

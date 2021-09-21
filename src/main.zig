@@ -11,9 +11,9 @@ const routing = index.routing;
 const staging = index.staging;
 const readline = index.readline;
 
-fn server_thread_function() !void {
-    // default.server = .{ .config = .{ .name = try std.mem.dupe(default.allocator, u8, "127.0.0.1"), .port = 30015 } };
+pub const log_level: std.log.Level = .warn;
 
+fn server_thread_function() !void {
     try default.server.initialize();
     defer default.server.deinit();
     try default.server.accept_loop();
@@ -54,7 +54,7 @@ pub fn main() !void {
     var server_frame = async server_thread_function();
     try routing.init_finger_table();
 
-    std.log.info("{Server ID}", .{utils.hex(&default.server.id)});
+    std.log.info("Server ID: {Server ID}", .{utils.hex(&default.server.id)});
 
     // start timers
     try timer.start_timer_thread();
