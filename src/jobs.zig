@@ -17,19 +17,23 @@ const AtomicQueue = index.AtomicQueue;
 const ID = index.ID;
 const Hash = index.Hash;
 
-pub var job_queue = AtomicQueue(Job).init(default.allocator);
+pub var job_queue = AtomicQueue(*Job).init(default.allocator);
 
 pub fn enqueue(job: Job) !void {
-    // logger.log_fmt("queuing job: {}\n", .{job});
-    try job_queue.push(job);
+    const job_ptr = try default.allocator.create(Job);
+    job_ptr.* = job;
+    std.log.info("queuing job: {}\n", .{job});
+    try job_queue.push(job_ptr);
 }
 
 pub fn job_loop() void {
     while (true) {
-        if (job_queue.pop()) |*job| {
+        if (job_queue.pop()) |job| {
+            std.log.info("Work: {}", .{job});
             job.work() catch |e| {
                 std.log.info("Work Error: {}", .{e});
             };
+            default.allocator.destroy(job);
         } else {
             //sleep
             std.time.sleep(10 * std.time.ns_per_ms);
@@ -66,8 +70,7 @@ pub const Job = union(enum) {
             },
             .print => |print| {
                 const stdout = std.io.getStdOut().writer();
-                _ = try stdout.write(print);
-                _ = try stdout.write("\n");
+                _ = try stdout.print("print: {s}\n", .{print});
             },
             .broadcast => |broadcast_message| {
                 std.log.info("broadcasting: {s}", .{broadcast_message});

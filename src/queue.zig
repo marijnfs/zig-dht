@@ -98,3 +98,25 @@ pub fn AtomicQueue(comptime T: type) type {
         }
     };
 }
+
+const expect = std.testing.expect;
+
+test "atomicTest" {
+    const Bla = struct { a: i64, b: f32 };
+    var queue = AtomicQueue(Bla).init(std.heap.page_allocator);
+    try queue.push(.{ .a = 3, .b = 3.41 });
+    try queue.push(.{ .a = 5, .b = 3.41 });
+
+    try expect(queue._size() == 2);
+    const x = queue.pop().?;
+    try expect(x.a == 3);
+    try expect(x.b == 3.41);
+
+    try expect(queue._size() == 1);
+    const y = queue.pop().?;
+    try expect(y.a == 5);
+    try expect(y.b == 3.41);
+
+    try expect(queue._size() == 0);
+    try expect(queue.pop() == null);
+}

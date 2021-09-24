@@ -99,8 +99,8 @@ pub fn count_connections() usize {
     var n_connections = default.server.outgoing_connections.count();
 
     // Also count the soon to be connections
-    for (jobs.job_queue.slice()) |job| {
-        if (job == .connect) {
+    for (jobs.job_queue.slice()) |job_ptr| {
+        if (job_ptr.* == .connect) {
             n_connections += 1;
         }
     }

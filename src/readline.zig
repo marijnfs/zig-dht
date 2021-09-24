@@ -16,10 +16,10 @@ pub fn readline_thread_function() !void {
             const content = communication.Content{ .broadcast = duped };
             const message = communication.Message{ .source_id = default.server.id, .nonce = utils.get_guid(), .content = content };
 
-            const stdout = std.io.getStdOut().writer();
-            try stdout.print("readline: {s}\n", .{duped});
-            try jobs.enqueue(.{ .broadcast = message });
+            // const stdout = std.io.getStdOut().writer();
+            // try stdout.print("readline: {s}\n", .{duped});
             try jobs.enqueue(.{ .print = duped });
+            try jobs.enqueue(.{ .broadcast = message });
         }
     }
 }
