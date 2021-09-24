@@ -27,6 +27,7 @@ pub fn init() !void {
     std.log.info("index.init()", .{});
     utils.init();
     model.init();
+    jobs.init();
 }
 
 // Common types

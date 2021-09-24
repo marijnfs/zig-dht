@@ -17,7 +17,11 @@ const AtomicQueue = index.AtomicQueue;
 const ID = index.ID;
 const Hash = index.Hash;
 
-pub var job_queue = AtomicQueue(*Job).init(default.allocator);
+pub var job_queue: AtomicQueue(*Job) = undefined;
+
+pub fn init() void {
+    job_queue = AtomicQueue(*Job).init(default.allocator);
+}
 
 pub fn enqueue(job: Job) !void {
     const job_ptr = try default.allocator.create(Job);
@@ -70,7 +74,7 @@ pub const Job = union(enum) {
             },
             .print => |print| {
                 const stdout = std.io.getStdOut().writer();
-                _ = try stdout.print("print: {s}\n", .{print});
+                nosuspend _ = try stdout.print("print: {s}\n", .{print});
             },
             .broadcast => |broadcast_message| {
                 std.log.info("broadcasting: {s}", .{broadcast_message});
