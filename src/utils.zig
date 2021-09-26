@@ -14,7 +14,7 @@ pub const hex = std.fmt.fmtSliceHexLower;
 
 pub fn init() void {
     std.log.info("utils.init", .{});
-    const seed = std.crypto.random.int(u64);
+const seed = 42; //std.crypto.random.int(u64);
     rng = std.rand.DefaultPrng.init(seed);
 
     root_guid = rng.random.int(u64);

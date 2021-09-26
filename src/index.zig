@@ -11,6 +11,7 @@ pub const model = @import("model.zig");
 pub const staging = @import("staging.zig");
 pub const timer = @import("timer.zig");
 pub const readline = @import("readline.zig");
+pub const c = @import("c.zig");
 
 const std = @import("std");
 
@@ -24,10 +25,15 @@ pub const default = struct {
 };
 
 pub fn init() !void {
-    std.log.info("index.init()", .{});
+    std.log.info("index.init", .{});
     utils.init();
     model.init();
     jobs.init();
+    try c.init();
+}
+
+pub fn deinit() void {
+    c.deinit();
 }
 
 // Common types

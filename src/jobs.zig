@@ -12,6 +12,7 @@ const utils = index.utils;
 const connections = index.connections;
 const model = index.model;
 const jobs = index.jobs;
+const c = index.c;
 
 const AtomicQueue = index.AtomicQueue;
 const ID = index.ID;
@@ -30,9 +31,13 @@ pub fn enqueue(job: Job) !void {
     try job_queue.push(job_ptr);
 }
 
-pub fn job_loop() void {
+pub fn job_loop() !void {
     while (true) {
         if (job_queue.pop()) |job| {
+            // const stdout = std.io.getStdOut().writer();
+            // nosuspend stdout.print("job: {any}\n", .{job}) catch unreachable;
+            const data = try std.fmt.allocPrint(default.allocator, "job: {any}\n", .{job});
+            c.print(data);
             std.log.info("Work: {}", .{job});
             job.work() catch |e| {
                 std.log.info("Work Error: {}", .{e});
@@ -73,8 +78,9 @@ pub const Job = union(enum) {
                 //most of the main domain code is here
             },
             .print => |print| {
-                const stdout = std.io.getStdOut().writer();
-                nosuspend _ = try stdout.print("print: {s}\n", .{print});
+                c.print(print);
+                // const stdout = std.io.getStdOut().writer();
+                // nosuspend _ = try stdout.print("print: {s}\n", .{print});
             },
             .broadcast => |broadcast_message| {
                 std.log.info("broadcasting: {s}", .{broadcast_message});

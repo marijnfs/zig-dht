@@ -27,6 +27,7 @@ pub fn time_test() void {
 
 pub fn main() !void {
     try index.init();
+    defer index.deinit();
 
     try timer.add_timer(5000, staging.expand_connections, true);
     try timer.add_timer(2000, staging.refresh_finger_table, true);
@@ -63,9 +64,10 @@ pub fn main() !void {
     try readline.start_readline_thread();
 
     std.log.info("Starting Job loop", .{});
-    jobs.job_loop();
-    std.log.info("Done", .{});
-    try await server_frame;
+    try jobs.job_loop();
+    _ = server_frame;
+    unreachable;
+    // try await server_frame;
 }
 
 test "job" {
