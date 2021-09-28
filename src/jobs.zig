@@ -59,6 +59,7 @@ pub const Job = union(enum) {
     inbound_forward_message: communication.InboundMessage,
     inbound_backward_message: communication.InboundMessage,
     print: []u8,
+    print32: []u32,
     process_forward: struct {
         guid: u64,
         message: communication.Message,
@@ -79,6 +80,11 @@ pub const Job = union(enum) {
             },
             .print => |print| {
                 c.print(print);
+                // const stdout = std.io.getStdOut().writer();
+                // nosuspend _ = try stdout.print("print: {s}\n", .{print});
+            },
+            .print32 => |print| {
+                c.print32(print);
                 // const stdout = std.io.getStdOut().writer();
                 // nosuspend _ = try stdout.print("print: {s}\n", .{print});
             },
