@@ -40,7 +40,9 @@ pub fn read_loop() !void {
         var input: c.ncinput = undefined;
         const ecg = c.notcurses_getc_blocking(nc_context, &input);
         // const data = try std.fmt.allocPrint(default.allocator, "{} {}", .{ char, input.id });
-        if (input.id == c.NCKEY_ENTER) {
+        if (input.id == c.NCKEY_RESIZE) {
+            _ = c.notcurses_render(nc_context);
+        } else if (input.id == c.NCKEY_ENTER) {
             try jobs.enqueue(.{ .print32 = try std.mem.dupe(default.allocator, u32, buf.items) });
 
             const content = communication.Content{ .broadcast = try std.mem.dupe(default.allocator, u8, std.mem.sliceAsBytes(buf.items)) };

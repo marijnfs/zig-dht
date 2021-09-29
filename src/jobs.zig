@@ -128,9 +128,9 @@ pub const Job = union(enum) {
                         const serial_message = try serial.serialise(message);
                         defer default.allocator.free(serial_message);
                         const hash_message = try calculate_and_add_hash(serial_message);
-                        std.log.info("send message with hash of: {}", .{hash_message.len});
-
-                        break :blk hash_message;
+                        std.log.info("send message with hash of: {}", .{utils.hex(&hash_message.hash)});
+                        try model.add_hash(hash_message.hash);
+                        break :blk hash_message.slice;
                     },
                 };
                 switch (envelope.target) {
@@ -168,7 +168,7 @@ pub const Job = union(enum) {
 
                 var hash_slice = try calculate_and_check_hash(data_slice);
 
-                if ((try model.hashes_seen.getOrPut(hash_slice.hash)).found_existing) {
+                if (try model.check_and_add_hash(hash_slice.hash)) {
                     std.log.info("message dropped, already seen", .{});
                     return;
                 }
@@ -224,11 +224,11 @@ fn calculate_and_check_hash(data_slice: []u8) !RetType {
     return RetType{ .hash = calculated_hash, .slice = body_slice };
 }
 
-fn calculate_and_add_hash(data_slice: []u8) ![]u8 {
+fn calculate_and_add_hash(data_slice: []u8) !RetType {
     const hash = utils.calculate_hash(data_slice);
 
     const hash_message = try default.allocator.alloc(u8, hash.len + data_slice.len);
     std.mem.copy(u8, hash_message[0..hash.len], &hash);
     std.mem.copy(u8, hash_message[hash.len..], data_slice);
-    return hash_message;
+    return RetType{ .hash = hash, .slice = hash_message };
 }
