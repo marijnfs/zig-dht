@@ -19,6 +19,7 @@ pub fn print(str: []u8) void {
     for (str) |char| {
         _ = c.ncplane_putchar(nc_plane, char);
     }
+    _ = c.ncplane_putchar(nc_plane, '\n');
     _ = c.notcurses_render(nc_context);
 }
 
@@ -29,7 +30,7 @@ pub fn print32(str: []u32) void {
         _ = c.nccell_load_egc32(nc_plane, &cell, ecg);
         _ = c.ncplane_putc(nc_plane, &cell);
     }
-
+    _ = c.ncplane_putchar(nc_plane, '\n');
     _ = c.notcurses_render(nc_context);
 }
 
