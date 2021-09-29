@@ -29,11 +29,11 @@ pub fn main() !void {
     try index.init();
     defer index.deinit();
 
-    try timer.add_timer(5000, staging.expand_connections, true);
-    try timer.add_timer(2000, staging.refresh_finger_table, true);
-    try timer.add_timer(3000, staging.sync_finger_table, true);
-    try timer.add_timer(2000, staging.clear_closed_connections, true);
-    try timer.add_timer(10000, staging.detect_self_connection, true);
+    try timer.add_timer(10000, staging.expand_connections, true);
+    try timer.add_timer(20000, staging.refresh_finger_table, true);
+    try timer.add_timer(30000, staging.sync_finger_table, true);
+    try timer.add_timer(30000, staging.clear_closed_connections, true);
+    try timer.add_timer(60000, staging.detect_self_connection, true);
 
     var args = try std.process.argsAlloc(default.allocator);
     defer std.process.argsFree(default.allocator, args);

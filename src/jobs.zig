@@ -36,8 +36,8 @@ pub fn job_loop() !void {
         if (job_queue.pop()) |job| {
             // const stdout = std.io.getStdOut().writer();
             // nosuspend stdout.print("job: {any}\n", .{job}) catch unreachable;
-            const data = try std.fmt.allocPrint(default.allocator, "job: {any}\n", .{job});
-            c.print(data);
+            // const data = try std.fmt.allocPrint(default.allocator, "job: {any}\n", .{job});
+            // c.print(data);
             std.log.info("Work: {}", .{job});
             job.work() catch |e| {
                 std.log.info("Work Error: {}", .{e});
@@ -78,8 +78,9 @@ pub const Job = union(enum) {
                 //this means the message is for us
                 //most of the main domain code is here
             },
-            .print => |print| {
-                c.print(print);
+            .print => |buf| {
+                c.print32(std.mem.bytesAsSlice(u32, @alignCast(4, buf)));
+                // c.print(buf);
                 // const stdout = std.io.getStdOut().writer();
                 // nosuspend _ = try stdout.print("print: {s}\n", .{print});
             },

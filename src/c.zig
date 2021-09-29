@@ -7,6 +7,8 @@ const std = @import("std");
 const index = @import("index.zig");
 const default = index.default;
 const jobs = index.jobs;
+const communication = index.communication;
+const utils = index.utils;
 
 var input_thread: std.Thread = undefined;
 
@@ -39,6 +41,12 @@ pub fn read_loop() !void {
         // const data = try std.fmt.allocPrint(default.allocator, "{} {}", .{ char, input.id });
         if (input.id == c.NCKEY_ENTER) {
             try jobs.enqueue(.{ .print32 = try std.mem.dupe(default.allocator, u32, buf.items) });
+
+            const content = communication.Content{ .broadcast = try std.mem.dupe(default.allocator, u8, std.mem.sliceAsBytes(buf.items)) };
+            const message = communication.Message{ .source_id = default.server.id, .nonce = utils.get_guid(), .content = content };
+
+            try jobs.enqueue(.{ .broadcast = message });
+
             try buf.resize(0);
         } else {
             try buf.append(ecg);
