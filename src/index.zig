@@ -20,13 +20,13 @@ pub const default = struct {
 
     // Main server instance
     pub var server: @import("server.zig").Server = undefined;
-
     pub const target_connections = 8;
 };
 
 pub fn init() !void {
     std.log.info("index.init", .{});
     utils.init();
+    default.server = @import("server.zig").Server{};
     model.init();
     jobs.init();
     try c.init();

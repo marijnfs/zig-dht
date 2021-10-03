@@ -10,6 +10,7 @@ const jobs = index.jobs;
 const routing = index.routing;
 const staging = index.staging;
 const readline = index.readline;
+const c = index.c;
 
 pub const log_level: std.log.Level = .warn;
 
@@ -18,7 +19,7 @@ fn server_thread_function() !void {
     defer default.server.deinit();
     try default.server.accept_loop();
 
-    std.log.info("Accepting frame", .{});
+    std.log.info("Server Ended", .{});
 }
 
 pub fn time_test() void {
@@ -37,16 +38,24 @@ pub fn main() !void {
 
     var args = try std.process.argsAlloc(default.allocator);
     defer std.process.argsFree(default.allocator, args);
+    std.log.info("arg0 {s}", .{args[0]});
 
-    std.log.info("args: {s}", .{args[1]});
-
-    if (args.len > 1) {
-        const port = try std.fmt.parseInt(u16, args[2], 0);
-        default.server.config = .{ .name = args[1], .port = port };
+    if (args.len < 4) {
+        std.log.err("Usage: {s} [username] [localip] [localport] ([remote ip] [remote port])*", .{args[0]});
+        return error.MissingUsername;
     }
-    if (args.len > 3) {
-        const port = try std.fmt.parseInt(u16, args[4], 0);
-        const addr = try std.net.Address.parseIp(args[3], port);
+
+    {
+        const port = try std.fmt.parseInt(u16, args[3], 0);
+        default.server.config = .{ .name = args[2], .port = port };
+        const username = args[1];
+        default.server.config.username = try std.mem.dupe(default.allocator, u8, username);
+        std.log.info("Username: {s}", .{default.server.config.username});
+    }
+
+    if (args.len >= 5) {
+        const port = try std.fmt.parseInt(u16, args[5], 0);
+        const addr = try std.net.Address.parseIp(args[4], port);
         try routing.add_address_seen(addr);
         try jobs.enqueue(.{ .connect = addr });
     }
@@ -64,6 +73,7 @@ pub fn main() !void {
     try readline.start_readline_thread();
 
     std.log.info("Starting Job loop", .{});
+
     try jobs.job_loop();
     _ = server_frame;
     unreachable;

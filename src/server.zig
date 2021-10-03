@@ -10,11 +10,12 @@ const ID = index.ID;
 
 pub const Server = struct {
     const Config = struct {
-        name: []u8 = undefined,
+        name: []u8 = "",
         port: u16 = 0,
+        username: []u8 = "",
     };
 
-    config: Config,
+    config: Config = .{},
     state: State = .Init,
     stream_server: net.StreamServer = undefined,
     id: ID = std.mem.zeroes(ID),

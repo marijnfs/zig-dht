@@ -35,6 +35,23 @@ pub fn print32(str: []u32) void {
     _ = c.notcurses_render(nc_context);
 }
 
+pub fn print_username() !void {
+    var cell: c.nccell = undefined;
+    c.nccell_init(&cell);
+    _ = c.nccell_set_fg_rgb8(&cell, 230, 100, 50);
+    _ = c.ncplane_set_base_cell(nc_line_plane, &cell);
+
+    const username = default.server.config.username;
+    for (username) |char| {
+        _ = c.ncplane_putchar_stained(nc_line_plane, char);
+    }
+    _ = c.ncplane_putchar(nc_line_plane, ':');
+    _ = c.ncplane_putchar(nc_line_plane, ' ');
+
+    _ = c.nccell_set_fg_rgb8(&cell, 250, 250, 250);
+    _ = c.ncplane_set_base_cell(nc_line_plane, &cell);
+}
+
 pub fn read_loop() !void {
     var buf = std.ArrayList(u32).init(default.allocator);
     while (true) {
@@ -55,6 +72,8 @@ pub fn read_loop() !void {
 
             c.ncplane_erase(nc_line_plane);
             c.ncplane_home(nc_line_plane);
+            try print_username();
+
             _ = c.notcurses_render(nc_context);
         } else {
             try buf.append(ecg);
@@ -71,6 +90,8 @@ pub fn read_loop() !void {
 
 pub fn init() !void {
     nc_context = c.notcurses_init(null, c.stdout);
+    if (nc_context == null)
+        return error.NotCursesFailedInit;
     nc_plane = c.notcurses_top(nc_context);
     _ = c.ncplane_set_scrolling(nc_plane, true);
 
@@ -78,9 +99,11 @@ pub fn init() !void {
     plane_options.y = c.NCALIGN_BOTTOM;
     plane_options.x = c.NCALIGN_LEFT;
     plane_options.rows = 1;
-    plane_options.cols = 20;
+    plane_options.cols = 80;
     plane_options.flags = c.NCPLANE_OPTION_HORALIGNED | c.NCPLANE_OPTION_VERALIGNED | c.NCPLANE_OPTION_FIXED;
     nc_line_plane = c.ncplane_create(nc_plane, &plane_options);
+
+    try print_username();
 
     input_thread = try std.Thread.spawn(.{}, read_loop, .{});
 }
