@@ -12,7 +12,7 @@ const ID = index.ID;
 // Message contents
 pub const Content = union(enum) { ping: struct { source_id: ID, source_port: u16 }, pong: struct {
     apparent_ip: std.net.Address,
-}, get_known_ips: usize, send_known_ips: []std.net.Address, find: struct { id: ID, inclusive: u8 = 0 }, found: struct { id: ID, address: std.net.Address }, broadcast: []u8 };
+}, get_known_ips: usize, send_known_ips: []std.net.Address, find: struct { id: ID, inclusive: u8 = 0 }, found: struct { id: ID, address: ?std.net.Address }, broadcast: []u8 };
 
 pub const Message = struct {
     hash: ID = std.mem.zeroes(ID), //during forward, this is the hash of the message (minus the hash), during backward it is the reply hash
@@ -151,9 +151,11 @@ pub fn process_backward(message: Message, guid: u64) !void {
             std.log.info("found result: {s}", .{found});
 
             const id = found.id;
-            const address = found.address;
-
-            try routing.set_finger(id, address);
+            if (found.address) |address| {
+                try routing.set_finger(id, address);
+            } else {
+                std.log.info("found, but got no address", .{});
+            }
         },
         .send_known_ips => |known_ips| {
             std.log.info("adding n 'known' addresses: {}", .{known_ips.len});

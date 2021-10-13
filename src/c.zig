@@ -103,8 +103,6 @@ pub fn init() !void {
     plane_options.flags = c.NCPLANE_OPTION_HORALIGNED | c.NCPLANE_OPTION_VERALIGNED | c.NCPLANE_OPTION_FIXED;
     nc_line_plane = c.ncplane_create(nc_plane, &plane_options);
 
-    try print_username();
-
     input_thread = try std.Thread.spawn(.{}, read_loop, .{});
 }
 

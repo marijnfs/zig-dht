@@ -17,11 +17,11 @@ pub const Server = struct {
 
     config: Config = .{},
     state: State = .Init,
-    stream_server: net.StreamServer = undefined,
+    stream_server: net.StreamServer,
     id: ID = std.mem.zeroes(ID),
-    apparent_address: std.net.Address = undefined,
-    incoming_connections: std.AutoHashMap(*connections.InConnection, void) = undefined,
-    outgoing_connections: std.AutoHashMap(*connections.OutConnection, void) = undefined,
+    apparent_address: ?std.net.Address = null,
+    incoming_connections: std.AutoHashMap(*connections.InConnection, void),
+    outgoing_connections: std.AutoHashMap(*connections.OutConnection, void),
 
     // router map, mapping message GUIDs to connection GUIDs
     // both for incoming and outgoing connections.
@@ -29,7 +29,7 @@ pub const Server = struct {
 
     pub fn get_incoming_connection(server: *Server, guid: u64) !*connections.InConnection {
         var it = server.incoming_connections.keyIterator();
-        while (it.next()) |conn| {
+    while (it.next()) |conn| {
             if (conn.*.guid == guid)
                 return conn.*;
         }

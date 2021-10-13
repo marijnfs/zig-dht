@@ -1,5 +1,7 @@
 // Index file that includes the individual classes etc. that are used throughout the software.
 
+const std = @import("std");
+
 pub const jobs = @import("jobs.zig");
 pub const connections = @import("connections.zig");
 pub const AtomicQueue = @import("queue.zig").AtomicQueue;
@@ -13,20 +15,19 @@ pub const timer = @import("timer.zig");
 pub const readline = @import("readline.zig");
 pub const c = @import("c.zig");
 
-const std = @import("std");
+pub const Server = @import("server.zig").Server;
 
 pub const default = struct {
     pub const allocator = std.heap.page_allocator;
 
     // Main server instance
-    pub var server: @import("server.zig").Server = undefined;
+    pub var server: *Server = undefined;
     pub const target_connections = 8;
 };
 
 pub fn init() !void {
     std.log.info("index.init", .{});
     utils.init();
-    default.server = @import("server.zig").Server{};
     model.init();
     jobs.init();
     try c.init();

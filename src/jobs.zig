@@ -107,10 +107,13 @@ pub const Job = union(enum) {
                 try callback();
             },
             .connect => |address| {
-                if (std.net.Address.eql(address, default.server.apparent_address)) {
-                    std.log.info("Asked to connect to our own apparent ip, ignoring", .{});
-                    return;
+                if (default.server.apparent_address) |apparent_address| {
+                    if (std.net.Address.eql(address, apparent_address)) {
+                        std.log.info("Asked to connect to our own apparent ip, ignoring", .{});
+                        return;
+                    }
                 }
+
                 std.log.info("Connect {s}, sending ping: {}", .{ address, utils.hex(&default.server.id) });
                 const out_connection = try default.server.connect_and_add(address);
                 const content = communication.Content{ .ping = .{ .source_id = default.server.id, .source_port = default.server.config.port } };
