@@ -18,9 +18,9 @@ var nc_line_plane: ?*c.ncplane = undefined;
 
 pub fn print(str: []u8) void {
     for (str) |char| {
-        _ = c.ncplane_putchar(nc_plane, char);
+        _ = c.ncplane_putchar_stained(nc_plane, char);
     }
-    _ = c.ncplane_putchar(nc_plane, '\n');
+    _ = c.ncplane_putchar_stained(nc_plane, '\n');
     _ = c.notcurses_render(nc_context);
 }
 
@@ -31,25 +31,29 @@ pub fn print32(str: []u32) void {
         _ = c.nccell_load_egc32(nc_plane, &cell, ecg);
         _ = c.ncplane_putc(nc_plane, &cell);
     }
-    _ = c.ncplane_putchar(nc_plane, '\n');
+    _ = c.ncplane_putchar_stained(nc_plane, '\n');
     _ = c.notcurses_render(nc_context);
 }
 
 pub fn print_username() !void {
-    var cell: c.nccell = undefined;
-    c.nccell_init(&cell);
-    _ = c.nccell_set_fg_rgb8(&cell, 230, 100, 50);
-    _ = c.ncplane_set_base_cell(nc_line_plane, &cell);
+    // var cell: c.nccell = undefined;
+    // c.nccell_init(&cell);
+    // _ = c.nccell_set_fg_rgb8(&cell, 230, 100, 50);
+    // _ = c.ncplane_set_base_cell(nc_line_plane, &cell);
 
+    var other_cell: c.nccell = undefined;
     const username = default.server.config.username;
     for (username) |char| {
-        _ = c.ncplane_putchar_stained(nc_line_plane, char);
+        // nccell_set_fg_rgb8
+        _ = c.nccell_load_char(nc_line_plane, &other_cell, char);
+        _ = c.nccell_set_fg_rgb8(&other_cell, 230, 100, 50);
+        _ = c.ncplane_putc(nc_line_plane, &other_cell);
+        // _ = c.ncplane_putchar_stained(nc_line_plane, char);
     }
     _ = c.ncplane_putchar(nc_line_plane, ':');
     _ = c.ncplane_putchar(nc_line_plane, ' ');
 
-    _ = c.nccell_set_fg_rgb8(&cell, 250, 250, 250);
-    _ = c.ncplane_set_base_cell(nc_line_plane, &cell);
+    _ = c.nccell_set_fg_rgb8(&other_cell, 50, 50, 50);
 }
 
 pub fn read_loop() !void {

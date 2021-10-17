@@ -12,6 +12,7 @@ const staging = index.staging;
 const readline = index.readline;
 const c = index.c;
 const Server = index.Server;
+const ID = index.ID;
 
 pub const log_level: std.log.Level = .warn;
 
@@ -26,7 +27,19 @@ pub fn time_test() void {
     std.log.info("timer", .{});
 }
 
+// pub fn handle_key(key: i32) !void {}
+
+// pub fn handle_special_key(key: i32) !void {}
+
+// pub fn handle_broadcast(msg: []u8, src: ID) !void {}
+
+// pub fn handle_render() !void {}
+
 pub fn main() !void {
+    var args = try std.process.argsAlloc(default.allocator);
+    defer std.process.argsFree(default.allocator, args);
+    std.log.info("arg0 {s}", .{args[0]});
+
     try index.init();
     defer index.deinit();
 
@@ -35,10 +48,6 @@ pub fn main() !void {
     try timer.add_timer(30000, staging.sync_finger_table, true);
     try timer.add_timer(30000, staging.clear_closed_connections, true);
     try timer.add_timer(60000, staging.detect_self_connection, true);
-
-    var args = try std.process.argsAlloc(default.allocator);
-    defer std.process.argsFree(default.allocator, args);
-    std.log.info("arg0 {s}", .{args[0]});
 
     if (args.len < 4) {
         std.log.err("Usage: {s} [username] [localip] [localport] ([remote ip] [remote port])*", .{args[0]});
@@ -80,8 +89,4 @@ pub fn main() !void {
     _ = server_frame;
     unreachable;
     // try await server_frame;
-}
-
-test "job" {
-    // var job = index.Job{ .connect = "sdf" };
 }
