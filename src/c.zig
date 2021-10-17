@@ -35,6 +35,23 @@ pub fn print32(str: []u32) void {
     _ = c.notcurses_render(nc_context);
 }
 
+pub fn print_msg(user: []u8, msg: []u32) void {
+    for (user) |char| {
+        _ = c.ncplane_putchar_stained(nc_plane, char);
+    }
+    _ = c.ncplane_putchar_stained(nc_plane, ':');
+    _ = c.ncplane_putchar_stained(nc_plane, ' ');
+
+    var cell: c.nccell = undefined;
+    c.nccell_init(&cell);
+    for (msg) |ecg| {
+        _ = c.nccell_load_egc32(nc_plane, &cell, ecg);
+        _ = c.ncplane_putc(nc_plane, &cell);
+    }
+    _ = c.ncplane_putchar(nc_plane, '\n');
+    _ = c.notcurses_render(nc_context);
+}
+
 pub fn print_username() !void {
     // var cell: c.nccell = undefined;
     // c.nccell_init(&cell);
@@ -65,10 +82,15 @@ pub fn read_loop() !void {
         if (input.id > 0x100000) { //NC_KEY
             if (input.id == c.NCKEY_RESIZE) {
                 _ = c.notcurses_render(nc_context);
+            } else if (input.id == c.NCKEY_BACKSPACE or input.id == c.NCKEY_DEL) {
+                if (buf.items.len > 0) {
+                    _ = buf.swapRemove(buf.items.len - 1);
+                    _ = c.notcurses_render(nc_context);
+                }
             } else if (input.id == c.NCKEY_ENTER) {
                 try jobs.enqueue(.{ .print32 = try std.mem.dupe(default.allocator, u32, buf.items) });
 
-                const content = communication.Content{ .broadcast = try std.mem.dupe(default.allocator, u8, std.mem.sliceAsBytes(buf.items)) };
+                const content = communication.Content{ .broadcast = .{ .user = try std.mem.dupe(default.allocator, u8, default.server.config.username), .msg = try std.mem.dupe(default.allocator, u32, buf.items) } };
                 const message = communication.Message{ .source_id = default.server.id, .nonce = utils.get_guid(), .content = content };
 
                 try jobs.enqueue(.{ .broadcast = message });
@@ -80,6 +102,8 @@ pub fn read_loop() !void {
                 try print_username();
 
                 _ = c.notcurses_render(nc_context);
+            } else {
+                try buf.append(input.id);
             }
         } else {
             try buf.append(ecg);

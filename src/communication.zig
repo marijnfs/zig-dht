@@ -12,7 +12,7 @@ const ID = index.ID;
 // Message contents
 pub const Content = union(enum) { ping: struct { source_id: ID, source_port: u16 }, pong: struct {
     apparent_ip: std.net.Address,
-}, get_known_ips: usize, send_known_ips: []std.net.Address, find: struct { id: ID, inclusive: u8 = 0 }, found: struct { id: ID, address: ?std.net.Address }, broadcast: []u8 };
+}, get_known_ips: usize, send_known_ips: []std.net.Address, find: struct { id: ID, inclusive: u8 = 0 }, found: struct { id: ID, address: ?std.net.Address }, broadcast: struct { user: []u8, msg: []u32 } };
 
 pub const Message = struct {
     hash: ID = std.mem.zeroes(ID), //during forward, this is the hash of the message (minus the hash), during backward it is the reply hash
@@ -45,7 +45,7 @@ pub fn process_forward(source_message: Message, guid: u64) !void {
         .broadcast => |broadcast| {
             std.log.info("broadcast: '{s}'", .{broadcast});
             try jobs.enqueue(.{ .broadcast = source_message });
-            try jobs.enqueue(.{ .print = broadcast });
+            try jobs.enqueue(.{ .print_msg = .{ .user = broadcast.user, .msg = broadcast.msg } });
         },
         .get_known_ips => |n_ips| {
             // sanity check n_ips

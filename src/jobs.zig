@@ -60,6 +60,7 @@ pub const Job = union(enum) {
     inbound_backward_message: communication.InboundMessage,
     print: []u8,
     print32: []u32,
+    print_msg: struct { user: []u8, msg: []u32 },
     process_forward: struct {
         guid: u64,
         message: communication.Message,
@@ -89,6 +90,10 @@ pub const Job = union(enum) {
                 // const stdout = std.io.getStdOut().writer();
                 // nosuspend _ = try stdout.print("print: {s}\n", .{print});
             },
+            .print_msg => |print_msg| {
+                c.print_msg(print_msg.user, print_msg.msg);
+            },
+
             .broadcast => |broadcast_message| {
                 std.log.info("broadcasting: {s}", .{broadcast_message});
                 var it = default.server.outgoing_connections.keyIterator();
