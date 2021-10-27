@@ -53,6 +53,7 @@ pub fn job_loop() !void {
 // Jobs
 // Main application logic
 pub const Job = union(enum) {
+    render: bool,
     broadcast: communication.Message,
     connect: std.net.Address,
     send_message: communication.Envelope,
@@ -72,6 +73,9 @@ pub const Job = union(enum) {
     callback: fn () anyerror!void,
     fn work(self: *Job) !void {
         switch (self.*) {
+            .render => {
+                c.render();
+            },
             .process_forward => |guid_message| {
                 const message = guid_message.message;
                 const guid = guid_message.guid;

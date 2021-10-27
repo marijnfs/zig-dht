@@ -58,23 +58,86 @@ pub fn print_username() !void {
     // _ = c.nccell_set_fg_rgb8(&cell, 230, 100, 50);
     // _ = c.ncplane_set_base_cell(nc_line_plane, &cell);
 
-    var other_cell: c.nccell = undefined;
+    var cell = get_cell();
     const username = default.server.config.username;
     for (username) |char| {
         // nccell_set_fg_rgb8
-        _ = c.nccell_load_char(nc_line_plane, &other_cell, char);
-        _ = c.nccell_set_fg_rgb8(&other_cell, 230, 100, 50);
-        _ = c.ncplane_putc(nc_line_plane, &other_cell);
+        _ = c.nccell_load_char(nc_line_plane, &cell, char);
+        _ = c.nccell_set_fg_rgb8(&cell, 230, 100, 50);
+        _ = c.ncplane_putc(nc_line_plane, &cell);
         // _ = c.ncplane_putchar_stained(nc_line_plane, char);
     }
     _ = c.ncplane_putchar(nc_line_plane, ':');
     _ = c.ncplane_putchar(nc_line_plane, ' ');
+}
 
-    _ = c.nccell_set_fg_rgb8(&other_cell, 50, 50, 50);
+pub fn get_cell() c.nccell {
+    var cell: c.nccell = undefined;
+    c.nccell_init(&cell);
+    return cell;
+}
+
+pub fn draw_character(plane: ?*c.ncplane, char: u32, text_: ?[]u32, row: c_int, col: c_int) void {
+    var cell = get_cell();
+    _ = c.nccell_load_egc32(plane, &cell, char);
+    _ = c.nccell_set_fg_rgb8(&cell, 230, 100, 50);
+
+    _ = c.ncplane_cursor_move_yx(plane, row, col);
+    _ = c.ncplane_putc(plane, &cell);
+
+    if (text_) |text| {
+        _ = c.ncplane_putchar(plane, ' ');
+        for (text) |ch| {
+            _ = c.nccell_load_egc32(plane, &cell, ch);
+            _ = c.ncplane_putc(plane, &cell);
+        }
+    }
+    //
+
+}
+
+pub fn move_char(drow: c_int, dcol: c_int) !void {
+    my_state.row += drow;
+    my_state.col += dcol;
+
+    const content = communication.Content{ .broadcast = .{ .user = try std.mem.dupe(default.allocator, u8, default.server.config.username), .msg = try std.mem.dupe(default.allocator, u32, msg_buf.items) } };
+    const message = communication.Message{ .source_id = default.server.id, .nonce = utils.get_guid(), .content = content };
+
+    try update_user(default.server.config.username, my_state);
+    try jobs.enqueue(.{ .broadcast = message });
+    try jobs.enqueue(.{ .render = true });
+}
+
+var msg_buf = std.ArrayList(u32).init(default.allocator);
+
+const UserState = struct {
+    char: u32,
+    row: c_int = 0,
+    col: c_int = 0,
+};
+
+var my_state: UserState = .{ .char = 0x0044 };
+
+pub fn update_user(user: []u8, state: UserState) !void {
+    try user_states.put(user, state);
+    try jobs.enqueue(.{ .render = true });
+}
+
+var user_states = std.StringArrayHashMap(UserState).init(default.allocator);
+pub fn render() void {
+    c.ncplane_erase(nc_plane);
+    draw_character(nc_plane, my_state.char, null, my_state.row, my_state.col);
+
+    var it = user_states.iterator();
+    while (it.next()) |kv| {
+        // const username = kv.key_ptr.*;
+        const state = kv.value_ptr.*;
+        draw_character(nc_plane, state.char, null, state.row, state.col);
+    }
+    _ = c.notcurses_render(nc_context);
 }
 
 pub fn read_loop() !void {
-    var buf = std.ArrayList(u32).init(default.allocator);
     while (true) {
         var input: c.ncinput = undefined;
         const ecg = c.notcurses_getc_blocking(nc_context, &input);
@@ -83,30 +146,38 @@ pub fn read_loop() !void {
             if (input.id == c.NCKEY_RESIZE) {
                 _ = c.notcurses_render(nc_context);
             } else if (input.id == c.NCKEY_BACKSPACE or input.id == c.NCKEY_DEL) {
-                if (buf.items.len > 0) {
-                    _ = buf.swapRemove(buf.items.len - 1);
+                if (msg_buf.items.len > 0) {
+                    _ = msg_buf.swapRemove(msg_buf.items.len - 1);
                     _ = c.notcurses_render(nc_context);
                 }
             } else if (input.id == c.NCKEY_ENTER) {
-                try jobs.enqueue(.{ .print32 = try std.mem.dupe(default.allocator, u32, buf.items) });
+                try jobs.enqueue(.{ .print32 = try std.mem.dupe(default.allocator, u32, msg_buf.items) });
 
-                const content = communication.Content{ .broadcast = .{ .user = try std.mem.dupe(default.allocator, u8, default.server.config.username), .msg = try std.mem.dupe(default.allocator, u32, buf.items) } };
+                const content = communication.Content{ .broadcast = .{ .user = try std.mem.dupe(default.allocator, u8, default.server.config.username), .msg = try std.mem.dupe(default.allocator, u32, msg_buf.items) } };
                 const message = communication.Message{ .source_id = default.server.id, .nonce = utils.get_guid(), .content = content };
 
                 try jobs.enqueue(.{ .broadcast = message });
 
-                try buf.resize(0);
+                try msg_buf.resize(0);
 
                 c.ncplane_erase(nc_line_plane);
                 c.ncplane_home(nc_line_plane);
                 try print_username();
 
                 _ = c.notcurses_render(nc_context);
+            } else if (input.id == c.NCKEY_UP) {
+                try move_char(-1, 0);
+            } else if (input.id == c.NCKEY_DOWN) {
+                try move_char(1, 0);
+            } else if (input.id == c.NCKEY_LEFT) {
+                try move_char(0, -1);
+            } else if (input.id == c.NCKEY_RIGHT) {
+                try move_char(0, 1);
             } else {
-                try buf.append(input.id);
+                try msg_buf.append(input.id);
             }
         } else {
-            try buf.append(ecg);
+            try msg_buf.append(ecg);
 
             var cell: c.nccell = undefined;
             c.nccell_init(&cell);
