@@ -100,7 +100,13 @@ pub fn move_char(drow: c_int, dcol: c_int) !void {
     my_state.row += drow;
     my_state.col += dcol;
 
-    const content = communication.Content{ .broadcast = .{ .user = try std.mem.dupe(default.allocator, u8, default.server.config.username), .msg = try std.mem.dupe(default.allocator, u32, msg_buf.items) } };
+    const content = communication.Content{ .broadcast = .{
+        .char = my_state.char,
+        .row = my_state.row,
+        .col = my_state.col,
+        .user = try std.mem.dupe(default.allocator, u8, default.server.config.username),
+        .msg = try std.mem.dupe(default.allocator, u32, msg_buf.items),
+    } };
     const message = communication.Message{ .source_id = default.server.id, .nonce = utils.get_guid(), .content = content };
 
     try update_user(default.server.config.username, my_state);
@@ -116,7 +122,7 @@ const UserState = struct {
     col: c_int = 0,
 };
 
-var my_state: UserState = .{ .char = 0x0044 };
+var my_state: UserState = .{ .char = 0x42 };
 
 pub fn update_user(user: []u8, state: UserState) !void {
     try user_states.put(user, state);
@@ -153,7 +159,7 @@ pub fn read_loop() !void {
             } else if (input.id == c.NCKEY_ENTER) {
                 try jobs.enqueue(.{ .print32 = try std.mem.dupe(default.allocator, u32, msg_buf.items) });
 
-                const content = communication.Content{ .broadcast = .{ .user = try std.mem.dupe(default.allocator, u8, default.server.config.username), .msg = try std.mem.dupe(default.allocator, u32, msg_buf.items) } };
+                const content = communication.Content{ .broadcast = .{ .char = my_state.char, .user = try std.mem.dupe(default.allocator, u8, default.server.config.username), .msg = try std.mem.dupe(default.allocator, u32, msg_buf.items) } };
                 const message = communication.Message{ .source_id = default.server.id, .nonce = utils.get_guid(), .content = content };
 
                 try jobs.enqueue(.{ .broadcast = message });

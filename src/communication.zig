@@ -11,7 +11,7 @@ const ID = index.ID;
 
 // Message contents
 
-const BroadcastMessage = struct { user: []u8, msg: []u32, row: c_int = 0, col: c_int = 0 };
+const BroadcastMessage = struct { user: []u8, msg: []u32, char: u32, row: c_int = 0, col: c_int = 0 };
 
 pub const Content = union(enum) { ping: struct { source_id: ID, source_port: u16 }, pong: struct {
     apparent_ip: std.net.Address,
@@ -50,7 +50,7 @@ pub fn process_forward(source_message: Message, guid: u64) !void {
             try c.update_user(broadcast.user, .{
                 .row = broadcast.row,
                 .col = broadcast.col,
-                .char = 1023,
+                .char = broadcast.char,
             });
             try jobs.enqueue(.{ .broadcast = source_message });
             try jobs.enqueue(.{ .print_msg = .{ .user = broadcast.user, .msg = broadcast.msg } });
