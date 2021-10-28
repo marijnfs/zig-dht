@@ -52,7 +52,7 @@ pub fn print_msg(user: []u8, msg: []u32) void {
     _ = c.notcurses_render(nc_context);
 }
 
-pub fn print_username() !void {
+pub fn print_bottomline() !void {
     // var cell: c.nccell = undefined;
     // c.nccell_init(&cell);
     // _ = c.nccell_set_fg_rgb8(&cell, 230, 100, 50);
@@ -83,11 +83,19 @@ pub fn get_cell() c.nccell {
 }
 
 pub fn draw_character(plane: ?*c.ncplane, char: u32, text_: ?[]u32, row: c_int, col: c_int) void {
+    // var x: c_int = 0;
+    // var y: c_int = 0;
+
+    // _ = c.ncplane_dim_yx(plane, &y, &x);
+
     var cell = get_cell();
+
     _ = c.nccell_load_egc32(plane, &cell, char);
     _ = c.nccell_set_fg_rgb8(&cell, 230, 100, 50);
 
-    _ = c.ncplane_cursor_move_yx(plane, row, col);
+    const move_status = c.ncplane_cursor_move_yx(plane, row, col);
+    if (move_status == -1)
+        return;
     _ = c.ncplane_putc(plane, &cell);
 
     if (text_) |text| {
@@ -134,7 +142,7 @@ const UserState = struct {
     msg: ?[]u32 = null,
 };
 
-var my_state: UserState = .{ .char = 0x42 };
+var my_state: UserState = .{ .char = 0xb58c9FF0 }; //0x42 };
 
 pub fn update_user(user: []u8, state: UserState) !void {
     try user_states.put(user, state);
@@ -146,7 +154,7 @@ pub fn render() void {
     // draw base
     c.ncplane_erase(nc_line_plane);
     c.ncplane_home(nc_line_plane);
-    try print_username();
+    try print_bottomline();
 
     _ = c.notcurses_render(nc_context);
 
@@ -201,11 +209,14 @@ pub fn read_loop() !void {
 }
 
 pub fn init() !void {
+    _ = c.setlocale(c.LC_ALL, "en_US.UTF-8");
+    _ = c.setlocale(c.LC_CTYPE, "en_US.UTF-8");
+
     nc_context = c.notcurses_init(null, c.stdout);
     if (nc_context == null)
         return error.NotCursesFailedInit;
     nc_plane = c.notcurses_top(nc_context);
-    _ = c.ncplane_set_scrolling(nc_plane, true);
+    _ = c.ncplane_set_scrolling(nc_plane, false);
 
     var plane_options = std.mem.zeroes(c.ncplane_options);
     plane_options.y = c.NCALIGN_BOTTOM;
