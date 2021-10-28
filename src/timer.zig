@@ -10,7 +10,7 @@ fn compare_timer(t1: Timer, t2: Timer) std.math.Order {
     if (t1.alarm < t2.alarm) return .lt else return .gt;
 }
 
-var queue = std.PriorityQueue(Timer).init(default.allocator, compare_timer);
+var queue = std.PriorityQueue(Timer, compare_timer).init(default.allocator);
 
 // var timer_thread: std.Thread = undefined;
 var timer_frame: @Frame(timer_thread_function) = undefined;
