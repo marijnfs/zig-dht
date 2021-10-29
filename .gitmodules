@@ -1,0 +1,3 @@
+[submodule "ext/notcurses"]
+	path = ext/notcurses
+	url = https://github.com/dankamongmen/notcurses.git
