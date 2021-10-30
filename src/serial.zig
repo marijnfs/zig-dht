@@ -157,13 +157,13 @@ pub fn serialise_to_buffer(t: anytype, buf: *std.ArrayList(u8)) !void {
             try buf.appendSlice(std.mem.asBytes(&t));
         },
         .Optional => {
-            if (t == null) {
-                const opt: u8 = 0;
-                try serialise_to_buffer(opt, buf);
-            } else {
+            if (t) |t_| {
                 const opt: u8 = 1;
                 try serialise_to_buffer(opt, buf);
-                try serialise_to_buffer(t.?, buf);
+                try serialise_to_buffer(t_, buf);
+            } else {
+                const opt: u8 = 0;
+                try serialise_to_buffer(opt, buf);
             }
         },
         else => @compileError("Cannot serialise " ++ @tagName(@typeInfo(T)) ++ " types (unimplemented)."),
