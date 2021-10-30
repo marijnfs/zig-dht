@@ -59,9 +59,10 @@ pub const InConnection = struct {
 };
 
 pub const OutConnection = struct {
-    stream_connection: net.Stream,
-    state: State = .Connected,
+    stream_connection: net.Stream = undefined,
+    state: State = .Disconnected,
     frame: @Frame(connection_read_loop) = undefined,
+    connect_frame: @Frame(connect) = undefined,
     guid: u64 = 0,
     address: net.Address,
     id: ID = std.mem.zeroes(ID),
@@ -70,6 +71,13 @@ pub const OutConnection = struct {
         Connected,
         Disconnected,
     };
+
+    pub fn connect(connection: *OutConnection) !void {
+        connection.state = .Disconnected;
+        connection.stream_connection = try net.tcpConnectToAddress(connection.address);
+        connection.frame = async connection.connection_read_loop();
+        connection.state = .Connected;
+    }
 
     pub fn write(connection: *OutConnection, buf: []u8) !void {
         std.log.info("write n:{}", .{buf.len});

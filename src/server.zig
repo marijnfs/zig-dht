@@ -108,10 +108,9 @@ pub const Server = struct {
         var out_connection = try default.allocator.create(connections.OutConnection);
         out_connection.* = .{
             .address = address,
-            .stream_connection = try net.tcpConnectToAddress(address),
             .guid = utils.get_guid(),
         };
-        out_connection.frame = async out_connection.connection_read_loop();
+        out_connection.connect_frame = async out_connection.connect();
         try server.outgoing_connections.putNoClobber(out_connection, {});
         return out_connection;
     }
