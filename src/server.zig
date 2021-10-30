@@ -29,7 +29,7 @@ pub const Server = struct {
 
     pub fn get_incoming_connection(server: *Server, guid: u64) !*connections.InConnection {
         var it = server.incoming_connections.keyIterator();
-    while (it.next()) |conn| {
+        while (it.next()) |conn| {
             if (conn.*.guid == guid)
                 return conn.*;
         }
@@ -65,7 +65,7 @@ pub const Server = struct {
     }
 
     pub fn initialize(server: *Server) !void {
-        server.stream_server = net.StreamServer.init(net.StreamServer.Options{});
+        server.stream_server = net.StreamServer.init(net.StreamServer.Options{ .reuse_address = true });
         server.id = utils.rand_id();
         server.incoming_connections = std.AutoHashMap(*connections.InConnection, void).init(default.allocator);
         server.outgoing_connections = std.AutoHashMap(*connections.OutConnection, void).init(default.allocator);
