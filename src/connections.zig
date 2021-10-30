@@ -70,10 +70,14 @@ pub const OutConnection = struct {
     const State = enum {
         Connected,
         Disconnected,
+        Error,
     };
 
     pub fn connect(connection: *OutConnection) !void {
         connection.state = .Disconnected;
+        errdefer {
+            connection.state = .Error;
+        }
         connection.stream_connection = try net.tcpConnectToAddress(connection.address);
         connection.frame = async connection.connection_read_loop();
         connection.state = .Connected;
@@ -99,7 +103,7 @@ pub const OutConnection = struct {
 
         errdefer {
             std.log.info("connection to {} failed", .{connection.address});
-            connection.state = .Disconnected;
+            connection.state = .Error;
         }
         defer {
             std.log.info("stopping connection to {}", .{connection.address});
