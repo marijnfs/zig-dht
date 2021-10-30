@@ -104,6 +104,12 @@ pub const Job = union(enum) {
                 while (it.next()) |conn| {
                     try jobs.enqueue(.{ .send_message = .{ .target = .{ .guid = conn.*.guid }, .payload = .{ .message = broadcast_message } } });
                 }
+
+                // Backward routing (might not be a good idea)
+                var it_back = default.server.incoming_connections.keyIterator();
+                while (it_back.next()) |conn| {
+                    try jobs.enqueue(.{ .send_message = .{ .target = .{ .guid = conn.*.guid }, .payload = .{ .message = broadcast_message } } });
+                }
             },
             .process_backward => |guid_message| {
                 const message = guid_message.message;
