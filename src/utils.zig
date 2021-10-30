@@ -17,7 +17,7 @@ pub fn init() void {
 const seed = 42; //std.crypto.random.int(u64);
     rng = std.rand.DefaultPrng.init(seed);
 
-    root_guid = rng.random.int(u64);
+    root_guid = rng.random().int(u64);
 }
 
 pub fn get_guid() u64 {
@@ -55,7 +55,7 @@ pub fn less(id1: ID, id2: ID) bool {
 
 pub fn rand_id() ID {
     var id: ID = undefined;
-    rng.random.bytes(&id);
+    rng.random().bytes(&id);
     std.log.info("randid: {any}", .{id});
     return id;
 }
@@ -84,7 +84,7 @@ pub fn random_selection(K: usize, N: usize) ![]usize {
         ns[i] = i;
     }
 
-    rng.random.shuffle(usize, ns);
+    rng.random().shuffle(usize, ns);
     var k: usize = 0;
     while (k < ks.len) : (k += 1) {
         ks[k] = ns[k];
