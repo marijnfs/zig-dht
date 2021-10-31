@@ -11,6 +11,10 @@ pub fn build(b: *std.build.Builder) void {
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
     const mode = b.standardReleaseOptions();
 
+    const autogen_step = std.build.RunStep.create(b, "cmake");
+    autogen_step.addArg("");
+    autogen_step.cwd = "./build-notcurses.sh";
+
     const exe = b.addExecutable("zig-dht", "src/main.zig");
     exe.setTarget(target);
     exe.setBuildMode(mode);
@@ -27,4 +31,7 @@ pub fn build(b: *std.build.Builder) void {
 
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);
+
+    const nc_step = b.step("notcurses", "Build notcurses");
+    nc_step.dependOn(&autogen_step.step);
 }
