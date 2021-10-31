@@ -208,6 +208,11 @@ pub const Job = union(enum) {
                 // const hash = message.hash;
 
                 var hash_slice = try calculate_and_check_hash(data_slice);
+                if (try model.check_and_add_hash(hash_slice.hash)) {
+                    std.log.info("message dropped, already seen", .{});
+                    return;
+                }
+
                 data_slice = hash_slice.slice;
                 const message = try serial.deserialise(communication.Message, &data_slice);
 
