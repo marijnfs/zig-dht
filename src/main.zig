@@ -35,7 +35,41 @@ pub fn time_test() void {
 
 // pub fn handle_render() !void {}
 
+fn filetest() !void {
+    // var file = try std.fs.cwd().openFile("foo.txt", .{});
+    // defer file.close();
+
+    // while (true) {
+    //     var buf: [64 << 10]u8 = undefined;
+    //     const read = try file.read(&buf);
+    //     if (read == 0)
+    //         break;
+
+    //     const blob = try std.mem.dupe(default.allocator, u8, buf[0..read]);
+    //     _ = try index.db.database.put(blob);
+    // }
+
+    // const tmp: []u8 = try default.allocator.alloc(u8, 10);
+    // tmp[0] = 42;
+    // const id = try index.db.database.put(tmp);
+    // const blob = index.db.database.get(id);
+    // std.log.info("id: {any}", .{id});
+    // std.log.info("blob: {any}", .{blob});
+    // std.log.info("read: {any}", .{index.db.database.store.count()});
+
+    var cwd = std.fs.cwd();
+    var dir = try cwd.openDir("test", .{ .iterate = true });
+    // var dir = try std.fs.openDirAbsolute("test", .{ .iterate = true });
+
+    var walker = try dir.walk(default.allocator);
+    while (try walker.next()) |entry| {
+        std.log.err("entry {}", .{entry});
+    }
+    unreachable;
+}
+
 pub fn main() !void {
+    try filetest();
     var args = try std.process.argsAlloc(default.allocator);
     defer std.process.argsFree(default.allocator, args);
     std.log.info("arg0 {s}", .{args[0]});

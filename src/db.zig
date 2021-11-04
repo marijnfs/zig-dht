@@ -32,4 +32,8 @@ const Database = struct {
     pub fn get(db: *Database, id: ID) ?[]u8 {
         return db.store.get(id);
     }
+
+    pub fn contains(db: *Database, id: ID) bool {
+        return db.store.contains(id);
+    }
 };
