@@ -13,9 +13,26 @@ const ID = index.ID;
 
 const BroadcastMessage = struct { user: []u8, msg: ?[]u32, char: u32, row: c_int = 0, col: c_int = 0 };
 
-pub const Content = union(enum) { ping: struct { source_id: ID, source_port: u16 }, pong: struct {
-    apparent_ip: std.net.Address,
-}, get_known_ips: usize, send_known_ips: []std.net.Address, find: struct { id: ID, inclusive: u8 = 0 }, found: struct { id: ID, address: ?std.net.Address }, broadcast: BroadcastMessage };
+pub const Content = union(enum) {
+    ping: struct {
+        source_id: ID,
+        source_port: u16,
+    },
+    pong: struct {
+        apparent_ip: std.net.Address,
+    },
+    get_known_ips: usize,
+    send_known_ips: []std.net.Address,
+    find: struct {
+        id: ID,
+        inclusive: u8 = 0,
+    },
+    found: struct {
+        id: ID,
+        address: ?std.net.Address,
+    },
+    broadcast: BroadcastMessage,
+};
 
 pub const Message = struct {
     hash: ID = std.mem.zeroes(ID), //during forward, this is the hash of the message (minus the hash), during backward it is the reply hash
@@ -25,14 +42,16 @@ pub const Message = struct {
     content: Content,
 };
 
-pub const Envelope = struct { target: union(enum) {
-    guid: u64,
-    id: ID,
-}, //target output node
-payload: union(enum) {
-    raw: []u8,
-    message: Message,
-} };
+pub const Envelope = struct {
+    target: union(enum) {
+        guid: u64,
+        id: ID,
+    }, //target output node
+    payload: union(enum) {
+        raw: []u8,
+        message: Message,
+    },
+};
 
 pub const InboundMessage = struct {
     guid: u64, //relevant connection guid
