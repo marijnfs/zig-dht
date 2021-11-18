@@ -29,8 +29,8 @@ pub fn AtomicQueue(comptime T: type) type {
         }
 
         pub fn push(self: *Self, value: T) !void {
-            const held = self.mutex.acquire();
-            defer held.release();
+            self.mutex.lock();
+            defer self.mutex.unlock();
 
             try self.insertCheck();
             try self.buffer.append(value);
@@ -38,8 +38,8 @@ pub fn AtomicQueue(comptime T: type) type {
         }
 
         pub fn pop(self: *Self) ?T {
-            const held = self.mutex.acquire();
-            defer held.release();
+            self.mutex.lock();
+            defer self.mutex.unlock();
 
             if (self._empty()) return null;
 
