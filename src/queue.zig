@@ -79,7 +79,7 @@ pub fn AtomicQueue(comptime T: type) type {
         fn insertCheck(self: *Self) !void {
             const desired_capacity = (self._size() + 1) * 2; // double capacity is desired to prevent too many mem copies
             if (desired_capacity < self.buffer.capacity)
-                try self.buffer.ensureCapacity(desired_capacity);
+                try self.buffer.ensureTotalCapacity(desired_capacity);
             if (self.buffer.capacity < self.back + 1) {
                 if (self.front > 0) { //we can make space by moving
                     const N = self.back - self.front;

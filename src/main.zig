@@ -92,7 +92,7 @@ pub fn main() !void {
         const port = try std.fmt.parseInt(u16, args[3], 0);
         default.server.config = .{ .name = args[2], .port = port };
         const username = args[1];
-        default.server.config.username = try std.mem.dupe(default.allocator, u8, username);
+        default.server.config.username = try default.allocator.dupe(u8, username);
         std.log.info("Username: {s}", .{default.server.config.username});
         try default.server.initialize();
     }
