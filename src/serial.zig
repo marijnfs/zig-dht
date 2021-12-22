@@ -52,7 +52,7 @@ pub fn deserialise(comptime T: type, msg_ptr: *[]u8) !T {
         },
         .Union => {
             if (comptime info.Union.tag_type) |TagType| {
-                const active_tag = try deserialise(std.meta.TagType(T), msg_ptr);
+                const active_tag = try deserialise(std.meta.Tag(T), msg_ptr);
 
                 inline for (info.Union.fields) |field_info| {
                     if (@field(TagType, field_info.name) == active_tag) {
@@ -72,7 +72,7 @@ pub fn deserialise(comptime T: type, msg_ptr: *[]u8) !T {
         .Enum => {
             t = blk: {
                 var int_operand = try deserialise(u32, msg_ptr);
-                break :blk @intToEnum(T, @intCast(std.meta.TagType(T), int_operand));
+                break :blk @intToEnum(T, @intCast(std.meta.Tag(T), int_operand));
             };
         },
         .Int, .Float => {
@@ -135,7 +135,7 @@ pub fn serialise_to_buffer(t: anytype, buf: *std.ArrayList(u8)) !void {
         .Union => {
             if (info.Union.tag_type) |TagType| {
                 const active_tag = std.meta.activeTag(t);
-                try serialise_to_buffer(@as(std.meta.TagType(T), active_tag), buf);
+                try serialise_to_buffer(@as(std.meta.Tag(T), active_tag), buf);
 
                 // This manual inline loop is currently needed to find the right 'field' for the union
                 inline for (info.Union.fields) |field_info| {

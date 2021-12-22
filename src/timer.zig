@@ -6,11 +6,11 @@ const jobs = index.jobs;
 
 const Timer = struct { alarm: i64 = 0, callback: fn () anyerror!void, delay: i64 = 0 };
 
-fn compare_timer(t1: Timer, t2: Timer) std.math.Order {
+fn compare_timer(_: void, t1: Timer, t2: Timer) std.math.Order {
     if (t1.alarm < t2.alarm) return .lt else return .gt;
 }
 
-var queue = std.PriorityQueue(Timer, compare_timer).init(default.allocator);
+var queue = std.PriorityQueue(Timer, void, compare_timer).init(default.allocator, .{});
 
 // var timer_thread: std.Thread = undefined;
 var timer_frame: @Frame(timer_thread_function) = undefined;

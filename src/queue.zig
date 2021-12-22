@@ -14,7 +14,7 @@ pub fn AtomicQueue(comptime T: type) type {
         mutex: std.Thread.Mutex,
         buffer: ArrayList(T),
 
-        pub fn init(allocator: *std.mem.Allocator) Self {
+        pub fn init(allocator: std.mem.Allocator) Self {
             return Self{
                 .buffer = ArrayList(T).init(allocator),
                 .front = 0,
@@ -89,9 +89,9 @@ pub fn AtomicQueue(comptime T: type) type {
                     self.back = N;
                 } else { //there is no space, double capacity
                     if (self.buffer.capacity == 0) {
-                        try self.buffer.ensureCapacity(1);
+                        try self.buffer.ensureTotalCapacity(1);
                     } else {
-                        try self.buffer.ensureCapacity(self.buffer.capacity * 2);
+                        try self.buffer.ensureTotalCapacity(self.buffer.capacity * 2);
                     }
                 }
             }

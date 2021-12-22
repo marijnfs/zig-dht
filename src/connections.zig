@@ -50,7 +50,7 @@ pub const InConnection = struct {
 
         while (true) {
             var len = try stream_connection.stream.read(&buf);
-            try jobs.enqueue(.{ .inbound_forward_message = .{ .guid = connection.guid, .content = try std.mem.dupe(default.allocator, u8, buf[0..len]) } });
+            try jobs.enqueue(.{ .inbound_forward_message = .{ .guid = connection.guid, .content = try default.allocator.dupe(u8, buf[0..len]) } });
 
             if (len == 0)
                 break;
@@ -114,7 +114,7 @@ pub const OutConnection = struct {
             var len = try connection.stream_connection.read(&buf);
             std.log.info("read incoming backward len:{} ", .{buf.len});
 
-            try jobs.enqueue(.{ .inbound_backward_message = .{ .guid = connection.guid, .content = try std.mem.dupe(default.allocator, u8, buf[0..len]) } });
+            try jobs.enqueue(.{ .inbound_backward_message = .{ .guid = connection.guid, .content = try default.allocator.dupe(u8, buf[0..len]) } });
 
             if (len == 0)
                 break;

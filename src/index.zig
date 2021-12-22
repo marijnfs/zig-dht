@@ -18,8 +18,10 @@ pub const c = @import("c.zig");
 
 pub const Server = @import("server.zig").Server;
 
+pub var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+
 pub const default = struct {
-    pub const allocator = std.heap.page_allocator;
+    pub const allocator = gpa.allocator();
 
     // Main server instance
     pub var server: *Server = undefined;

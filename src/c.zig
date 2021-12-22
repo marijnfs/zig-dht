@@ -117,10 +117,10 @@ pub fn move_char(drow: c_int, dcol: c_int) !void {
         .char = my_state.char,
         .row = my_state.row,
         .col = my_state.col,
-        .user = try std.mem.dupe(default.allocator, u8, default.server.config.username),
+        .user = try default.allocator.dupe(u8, default.server.config.username),
         .msg = blk: {
             if (my_state.msg) |msg| {
-                break :blk try std.mem.dupe(default.allocator, u32, msg);
+                break :blk try default.allocator.dupe(u32, msg);
             } else {
                 break :blk null;
             }
@@ -185,8 +185,8 @@ pub fn read_loop() !void {
                     _ = c.notcurses_render(nc_context);
                 }
             } else if (input.id == c.NCKEY_ENTER) {
-                try jobs.enqueue(.{ .print32 = try std.mem.dupe(default.allocator, u32, msg_buf.items) });
-                my_state.msg = try std.mem.dupe(default.allocator, u32, msg_buf.items);
+                try jobs.enqueue(.{ .print32 = try default.allocator.dupe(u32, msg_buf.items) });
+                my_state.msg = try default.allocator.dupe(u32, msg_buf.items);
                 try move_char(0, 0);
 
                 try msg_buf.resize(0);
