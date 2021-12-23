@@ -146,7 +146,7 @@ pub const Job = union(enum) {
                     .message => |message| blk: {
                         const serial_message = try serial.serialise(message);
                         defer default.allocator.free(serial_message);
-                        const hash_message = try calculate_and_add_hash(serial_message);
+                        const hash_message = try append_hash(serial_message);
                         std.log.info("send message with hash of: {}", .{utils.hex(&hash_message.hash)});
                         try model.add_hash(hash_message.hash);
                         break :blk hash_message.slice;
@@ -248,7 +248,7 @@ fn calculate_and_check_hash(data_slice: []u8) !RetType {
     return RetType{ .hash = calculated_hash, .slice = body_slice };
 }
 
-fn calculate_and_add_hash(data_slice: []u8) !RetType {
+fn append_hash(data_slice: []u8) !RetType {
     const hash = utils.calculate_hash(data_slice);
 
     const hash_message = try default.allocator.alloc(u8, hash.len + data_slice.len);

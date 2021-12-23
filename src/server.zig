@@ -23,10 +23,6 @@ pub const Server = struct {
     incoming_connections: std.AutoHashMap(*connections.InConnection, void),
     outgoing_connections: std.AutoHashMap(*connections.OutConnection, void),
 
-    // router map, mapping message GUIDs to connection GUIDs
-    // both for incoming and outgoing connections.
-    connection_router: std.AutoHashMap(ID, u64) = undefined,
-
     pub fn get_incoming_connection(server: *Server, guid: u64) !*connections.InConnection {
         var it = server.incoming_connections.keyIterator();
         while (it.next()) |conn| {
@@ -69,7 +65,6 @@ pub const Server = struct {
         server.id = utils.rand_id();
         server.incoming_connections = std.AutoHashMap(*connections.InConnection, void).init(default.allocator);
         server.outgoing_connections = std.AutoHashMap(*connections.OutConnection, void).init(default.allocator);
-        server.connection_router = std.AutoHashMap(ID, u64).init(default.allocator);
 
         std.log.info("Connecting to {s}:{}", .{ server.config.name, server.config.port });
         const localhost = try net.Address.parseIp(server.config.name, server.config.port);
