@@ -174,7 +174,7 @@ pub fn render() void {
 pub fn read_loop() !void {
     while (true) {
         var input: c.ncinput = undefined;
-        const ecg = c.notcurses_getc_blocking(nc_context, &input);
+        const ecg = c.notcurses_get_blocking(nc_context, &input);
         // const data = try std.fmt.allocPrint(default.allocator, "{} {}", .{ char, input.id });
         if (input.id > 0x100000) { //NC_KEY
             if (input.id == c.NCKEY_RESIZE) {
@@ -216,7 +216,7 @@ pub fn init() !void {
     if (nc_context == null)
         return error.NotCursesFailedInit;
     nc_plane = c.notcurses_top(nc_context);
-    _ = c.ncplane_set_scrolling(nc_plane, false);
+    _ = c.ncplane_set_scrolling(nc_plane, 0);
 
     var plane_options = std.mem.zeroes(c.ncplane_options);
     plane_options.y = c.NCALIGN_BOTTOM;

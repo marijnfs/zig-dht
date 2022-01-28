@@ -88,12 +88,12 @@ pub fn main() !void {
     }
 
     {
-        default.server = try default.allocator.create(Server);
+        const servername = try default.allocator.dupe(u8, args[2]);
+        const username = try default.allocator.dupe(u8, args[1]);
         const port = try std.fmt.parseInt(u16, args[3], 0);
-        default.server.config = .{ .name = args[2], .port = port };
-        const username = args[1];
-        default.server.config.username = try default.allocator.dupe(u8, username);
-        std.log.info("Username: {s}", .{default.server.config.username});
+
+        default.server = try Server.create(.{ .name = servername, .username = username, .port = port });
+
         try default.server.initialize();
     }
 

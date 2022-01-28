@@ -23,6 +23,12 @@ pub const Server = struct {
     incoming_connections: std.AutoHashMap(*connections.InConnection, void),
     outgoing_connections: std.AutoHashMap(*connections.OutConnection, void),
 
+    pub fn create(config: Config) !*Server {
+        var server = try default.allocator.create(Server);
+        server.config = config;
+        return server;
+    }
+
     pub fn get_incoming_connection(server: *Server, guid: u64) !*connections.InConnection {
         var it = server.incoming_connections.keyIterator();
         while (it.next()) |conn| {
