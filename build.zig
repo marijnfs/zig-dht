@@ -19,7 +19,9 @@ pub fn build(b: *std.build.Builder) void {
     exe.setTarget(target);
     exe.setBuildMode(mode);
     exe.linkLibC();
+    exe.defineCMacro("_XOPEN_SOURCE", "1");
     exe.linkSystemLibrary("notcurses");
+    exe.linkSystemLibrary("notcurses-core");
     exe.addIncludeDir("/usr/local/include");
     exe.install();
 
