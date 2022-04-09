@@ -2,31 +2,24 @@ pub const io_mode = .evented; // use event loop
 
 const std = @import("std");
 
-const index = @import("index.zig");
-const default = index.default;
-const utils = index.utils;
-const timer = index.timer;
-const jobs = index.jobs;
-const routing = index.routing;
-const staging = index.staging;
+const dht = @import("dht");
+const default = dht.default;
+const utils = dht.utils;
+const timer = dht.timer;
+const timer_functions = dht.timer_functions;
+const jobs = dht.jobs;
+const routing = dht.routing;
+const staging = dht.staging;
 
-const c = index.c;
-const Server = index.Server;
-const ID = index.ID;
+const c = dht.c;
+const Server = dht.Server;
+const ID = dht.ID;
 
 pub const log_level: std.log.Level = .warn;
 
 pub fn time_test() void {
     std.log.info("timer", .{});
 }
-
-// pub fn handle_key(key: i32) !void {}
-
-// pub fn handle_special_key(key: i32) !void {}
-
-// pub fn handle_broadcast(msg: []u8, src: ID) !void {}
-
-// pub fn handle_render() !void {}
 
 fn filetest() !void {
     // var file = try std.fs.cwd().openFile("foo.txt", .{});
@@ -71,14 +64,15 @@ pub fn main() !void {
         return error.MissingUsername;
     }
 
-    try index.init();
-    defer index.deinit();
+    try dht.init();
+    defer dht.deinit();
 
-    try timer.add_timer(10000, staging.expand_connections, true);
-    try timer.add_timer(20000, staging.refresh_finger_table, true);
-    try timer.add_timer(30000, staging.sync_finger_table, true);
-    try timer.add_timer(30000, staging.clear_closed_connections, true);
-    try timer.add_timer(60000, staging.detect_self_connection, true);
+    // Add default functions
+    try timer.add_timer(10000, timer_functions.expand_connections, true);
+    try timer.add_timer(20000, timer_functions.refresh_finger_table, true);
+    try timer.add_timer(30000, timer_functions.sync_finger_table, true);
+    try timer.add_timer(30000, timer_functions.clear_closed_connections, true);
+    try timer.add_timer(60000, timer_functions.detect_self_connection, true);
 
     {
         const servername = try default.allocator.dupe(u8, args[2]);

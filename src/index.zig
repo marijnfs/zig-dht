@@ -12,6 +12,7 @@ pub const communication = @import("communication.zig");
 pub const model = @import("model.zig");
 pub const staging = @import("staging.zig");
 pub const timer = @import("timer.zig");
+pub const timer_functions = @import("timer_functions.zig");
 pub const db = @import("db.zig");
 pub const c = @import("c.zig");
 

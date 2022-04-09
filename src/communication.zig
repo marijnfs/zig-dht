@@ -58,6 +58,18 @@ pub const InboundMessage = struct {
     content: []u8,
 };
 
+fn build_reply(content: Content, source_message: Message, guid: u64) !Envelope {
+    const reply = Message{ .target_id = source_message.source_id, .source_id = default.server.id, .nonce = utils.get_guid(), .content = content };
+
+    const envelope = Envelope{
+        .target = .{ .guid = guid },
+        .payload = .{
+            .message = reply,
+        },
+    };
+    return envelope;
+}
+
 /// >>>>>>>
 /// >>>>>>>
 pub fn process_forward(source_message: Message, guid: u64) !void {
@@ -195,16 +207,4 @@ pub fn process_backward(message: Message, guid: u64) !void {
             std.log.warn("invalid forward message {any}", .{message});
         },
     }
-}
-
-fn build_reply(content: Content, source_message: Message, guid: u64) !Envelope {
-    const reply = Message{ .target_id = source_message.source_id, .source_id = default.server.id, .nonce = utils.get_guid(), .content = content };
-
-    const envelope = Envelope{
-        .target = .{ .guid = guid },
-        .payload = .{
-            .message = reply,
-        },
-    };
-    return envelope;
 }
