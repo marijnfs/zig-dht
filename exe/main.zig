@@ -61,7 +61,7 @@ pub fn main() !void {
 
     if (args.len < 4) {
         std.log.err("Usage: {s} [username] [localip] [localport] ([remote ip] [remote port])*", .{args[0]});
-        return error.MissingUsername;
+        return error.MissingArguments;
     }
 
     try dht.init();
@@ -74,21 +74,21 @@ pub fn main() !void {
     try timer.add_timer(30000, timer_functions.clear_closed_connections, true);
     try timer.add_timer(60000, timer_functions.detect_self_connection, true);
 
-    {
+    default.server = b: {
         const servername = try default.allocator.dupe(u8, args[2]);
         const username = try default.allocator.dupe(u8, args[1]);
         const port = try std.fmt.parseInt(u16, args[3], 0);
 
-        default.server = try Server.create(.{ .name = servername, .username = username, .port = port });
+        const server = try Server.create(.{ .name = servername, .username = username, .port = port });
+        try server.initialize();
+        break :b server;
+    };
 
-        try default.server.initialize();
-    }
-
-    if (args.len >= 5) {
+    if (args.len >= 6) {
         const port = try std.fmt.parseInt(u16, args[5], 0);
-        const addr = try std.net.Address.parseIp(args[4], port);
-        try routing.add_address_seen(addr);
-        try jobs.enqueue(.{ .connect = addr });
+        const address = try std.net.Address.parseIp(args[4], port);
+        try routing.add_address_seen(address);
+        try jobs.enqueue(.{ .connect = address });
     }
 
     std.log.info("Spawning Server Thread..", .{});
