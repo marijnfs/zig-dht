@@ -43,7 +43,6 @@ pub const InConnection = struct {
 
     pub fn connection_read_loop(connection: *InConnection) !void {
         const stream_connection = connection.stream_connection;
-        defer stream_connection.stream.close();
         std.log.info("connection from {}", .{stream_connection.address});
         var buf: [READ_BUF_SIZE]u8 = undefined;
 
@@ -59,6 +58,8 @@ pub const InConnection = struct {
             if (len == 0)
                 break;
         }
+
+        defer stream_connection.stream.close();
     }
 };
 
@@ -105,7 +106,6 @@ pub const OutConnection = struct {
     }
 
     pub fn connection_read_loop(connection: *OutConnection) !void {
-        defer connection.close();
         std.log.info("connection to {}", .{connection.address});
         var buf: [READ_BUF_SIZE]u8 = undefined;
 
@@ -127,6 +127,7 @@ pub const OutConnection = struct {
             if (len == 0)
                 break;
         }
+        connection.close();
     }
 
     pub fn format(
