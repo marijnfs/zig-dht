@@ -37,6 +37,10 @@ pub const InConnection = struct {
             return error.WriteError;
     }
 
+    pub fn start(connection: *InConnection) void {
+        connection.frame = async connection.connection_read_loop();
+    }
+
     pub fn connection_read_loop(connection: *InConnection) !void {
         const stream_connection = connection.stream_connection;
         defer stream_connection.stream.close();
@@ -90,6 +94,10 @@ pub const OutConnection = struct {
         const len = try connection.stream_connection.write(buf);
         if (len != buf.len)
             return error.WriteError;
+    }
+
+    pub fn start(connection: *OutConnection) void {
+        connection.frame = async connection.connection_read_loop();
     }
 
     pub fn close(connection: *OutConnection) void {

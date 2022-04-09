@@ -12,7 +12,6 @@ pub const communication = @import("communication.zig");
 pub const model = @import("model.zig");
 pub const staging = @import("staging.zig");
 pub const timer = @import("timer.zig");
-pub const readline = @import("readline.zig");
 pub const db = @import("db.zig");
 pub const c = @import("c.zig");
 
@@ -33,7 +32,7 @@ pub fn init() !void {
     utils.init();
     model.init();
     jobs.init();
-    try c.init();
+    // try c.init();
     try db.init();
 }
 

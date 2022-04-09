@@ -29,6 +29,27 @@ pub const Server = struct {
         return server;
     }
 
+    pub fn initialize(server: *Server) !void {
+        server.stream_server = net.StreamServer.init(net.StreamServer.Options{ .reuse_address = true });
+        server.id = utils.rand_id();
+        server.incoming_connections = std.AutoHashMap(*connections.InConnection, void).init(default.allocator);
+        server.outgoing_connections = std.AutoHashMap(*connections.OutConnection, void).init(default.allocator);
+
+        std.log.info("Connecting to {s}:{}", .{ server.config.name, server.config.port });
+        const localhost = try net.Address.parseIp(server.config.name, server.config.port);
+        try server.stream_server.listen(localhost);
+
+        std.log.info("my id: {any}", .{server.id});
+    }
+
+    pub fn start(server: *Server) !void {
+        std.log.info("Starting Server", .{});
+        defer server.deinit();
+        try server.accept_loop();
+
+        std.log.info("Server Ended", .{});
+    }
+
     pub fn get_incoming_connection(server: *Server, guid: u64) !*connections.InConnection {
         var it = server.incoming_connections.keyIterator();
         while (it.next()) |conn| {
@@ -66,19 +87,6 @@ pub const Server = struct {
         return best_connection;
     }
 
-    pub fn initialize(server: *Server) !void {
-        server.stream_server = net.StreamServer.init(net.StreamServer.Options{ .reuse_address = true });
-        server.id = utils.rand_id();
-        server.incoming_connections = std.AutoHashMap(*connections.InConnection, void).init(default.allocator);
-        server.outgoing_connections = std.AutoHashMap(*connections.OutConnection, void).init(default.allocator);
-
-        std.log.info("Connecting to {s}:{}", .{ server.config.name, server.config.port });
-        const localhost = try net.Address.parseIp(server.config.name, server.config.port);
-        try server.stream_server.listen(localhost);
-
-        std.log.info("my id: {any}", .{server.id});
-    }
-
     pub fn accept_loop(server: *Server) !void {
         server.state = .Ready;
         errdefer {
@@ -94,10 +102,8 @@ pub const Server = struct {
                 .stream_connection = stream_connection,
                 .guid = utils.get_guid(),
             };
-            connection.frame = async connection.connection_read_loop();
+            connection.start();
             try server.incoming_connections.putNoClobber(connection, {});
-            //time to schedule event loop to start connection
-
         }
         @panic("loop ended");
     }
@@ -111,7 +117,7 @@ pub const Server = struct {
             .address = address,
             .guid = utils.get_guid(),
         };
-        out_connection.connect_frame = async out_connection.connect();
+        out_connection.start();
         try server.outgoing_connections.putNoClobber(out_connection, {});
         return out_connection;
     }

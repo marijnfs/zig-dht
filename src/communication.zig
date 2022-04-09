@@ -109,29 +109,26 @@ pub fn process_forward(source_message: Message, guid: u64) !void {
             std.log.info("finding: {}", .{find});
 
             const search_id = find.id;
-            var best_connection = default.server.get_closest_outgoing_connection(search_id);
+            var closest_connection = default.server.get_closest_outgoing_connection(search_id);
 
-            var we_are_closest: bool = false;
-            if (best_connection) |connection| {
+            var we_are_closest: bool = true;
+            if (closest_connection) |connection| {
                 // check if the closest connection is closer than us
 
                 const conn_dist = utils.xor(connection.*.id, search_id);
                 const our_dist = utils.xor(default.server.id, search_id);
 
                 we_are_closest = utils.less(our_dist, conn_dist);
-            } else {
-                //We don't have connections apparently, so we assume we are the closest
-                we_are_closest = true;
             }
 
             if (we_are_closest) {
-                // Return message
+                // Return our apparent address as closest
                 const return_content: Content = .{ .found = .{ .id = default.server.id, .address = default.server.apparent_address } };
                 const envelope = try build_reply(return_content, source_message, guid);
                 try jobs.enqueue(.{ .send_message = envelope });
             } else {
                 // Pass on message to closest connections
-                try jobs.enqueue(.{ .send_message = .{ .target = .{ .guid = best_connection.?.guid }, .payload = .{ .message = source_message } } });
+                try jobs.enqueue(.{ .send_message = .{ .target = .{ .guid = closest_connection.?.guid }, .payload = .{ .message = source_message } } });
             }
         },
         .ping => |ping| {

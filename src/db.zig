@@ -6,7 +6,7 @@ const ID = index.ID;
 const Hash = index.Hash;
 
 const Blob = []u8;
-const MaxBlobSize = 64 << 10;
+const MaxBlobSize = 64 << 10; //64KB
 
 pub var database: Database = undefined;
 
