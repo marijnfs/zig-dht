@@ -34,7 +34,7 @@ pub fn init() !void {
     utils.init();
     model.init();
     jobs.init();
-    // try c.init();
+    try c.init();
     try db.init();
 }
 
