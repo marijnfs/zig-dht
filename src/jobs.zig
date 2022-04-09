@@ -74,68 +74,15 @@ pub const Job = union(enum) {
     callback: fn () anyerror!void,
     fn work(self: *Job) !void {
         switch (self.*) {
-            .render => {
-                c.render();
-            },
             .process_forward => |guid_message| {
                 const message = guid_message.message;
                 const guid = guid_message.guid;
                 try communication.process_forward(message, guid);
-                //this means the message is for us
-                //most of the main domain code is here
-            },
-            .print => |buf| {
-                c.print32(std.mem.bytesAsSlice(u32, @alignCast(4, buf)));
-                // c.print(buf);
-                // const stdout = std.io.getStdOut().writer();
-                // nosuspend _ = try stdout.print("print: {s}\n", .{print});
-            },
-            .print32 => |print| {
-                c.print32(print);
-                // const stdout = std.io.getStdOut().writer();
-                // nosuspend _ = try stdout.print("print: {s}\n", .{print});
-            },
-            .print_msg => |print_msg| {
-                c.print_msg(print_msg.user, print_msg.msg);
-            },
-
-            .broadcast => |broadcast_message| {
-                std.log.info("broadcasting: {s}", .{broadcast_message});
-                var it = default.server.outgoing_connections.keyIterator();
-                while (it.next()) |conn| {
-                    try jobs.enqueue(.{ .send_message = .{ .target = .{ .guid = conn.*.guid }, .payload = .{ .message = broadcast_message } } });
-                }
-
-                // Backward routing (might not be a good idea)
-                var it_back = default.server.incoming_connections.keyIterator();
-                while (it_back.next()) |conn| {
-                    try jobs.enqueue(.{ .send_message = .{ .target = .{ .guid = conn.*.guid }, .payload = .{ .message = broadcast_message } } });
-                }
             },
             .process_backward => |guid_message| {
                 const message = guid_message.message;
                 const guid = guid_message.guid;
                 try communication.process_backward(message, guid);
-                //this means the message is for us
-                //most of the main domain code is here
-            },
-            .callback => |callback| {
-                try callback();
-            },
-            .connect => |address| {
-                if (default.server.apparent_address) |apparent_address| {
-                    if (std.net.Address.eql(address, apparent_address)) {
-                        std.log.info("Asked to connect to our own apparent ip, ignoring", .{});
-                        return;
-                    }
-                }
-
-                std.log.info("Connect {s}, sending ping: {}", .{ address, utils.hex(&default.server.id) });
-                const out_connection = try default.server.connect_and_add(address);
-                std.log.info("Connected {s}", .{address});
-                const content = communication.Content{ .ping = .{ .source_id = default.server.id, .source_port = default.server.config.port } };
-                const message = communication.Message{ .source_id = default.server.id, .nonce = utils.get_guid(), .content = content };
-                try enqueue(.{ .send_message = .{ .target = .{ .guid = out_connection.guid }, .payload = .{ .message = message } } });
             },
             // Multi function send message,
             // both for incoming and outgoing messages
@@ -227,6 +174,56 @@ pub const Job = union(enum) {
                     std.log.info("pass on, target_id: {}", .{utils.hex(&message.target_id)});
                     try jobs.enqueue(.{ .send_message = .{ .target = .{ .id = message.target_id }, .payload = .{ .raw = data_slice } } });
                 }
+            },
+
+            .broadcast => |broadcast_message| {
+                std.log.info("broadcasting: {s}", .{broadcast_message});
+                var it = default.server.outgoing_connections.keyIterator();
+                while (it.next()) |conn| {
+                    try jobs.enqueue(.{ .send_message = .{ .target = .{ .guid = conn.*.guid }, .payload = .{ .message = broadcast_message } } });
+                }
+
+                // Backward routing (might not be a good idea)
+                var it_back = default.server.incoming_connections.keyIterator();
+                while (it_back.next()) |conn| {
+                    try jobs.enqueue(.{ .send_message = .{ .target = .{ .guid = conn.*.guid }, .payload = .{ .message = broadcast_message } } });
+                }
+            },
+
+            .connect => |address| {
+                if (default.server.apparent_address) |apparent_address| {
+                    if (std.net.Address.eql(address, apparent_address)) {
+                        std.log.info("Asked to connect to our own apparent ip, ignoring", .{});
+                        return;
+                    }
+                }
+
+                std.log.info("Connect {s}, sending ping: {}", .{ address, utils.hex(&default.server.id) });
+                const out_connection = try default.server.connect_and_add(address);
+                std.log.info("Connected {s}", .{address});
+                const content = communication.Content{ .ping = .{ .source_id = default.server.id, .source_port = default.server.config.port } };
+                const message = communication.Message{ .source_id = default.server.id, .nonce = utils.get_guid(), .content = content };
+                try enqueue(.{ .send_message = .{ .target = .{ .guid = out_connection.guid }, .payload = .{ .message = message } } });
+            },
+            .callback => |callback| {
+                try callback();
+            },
+            .print => |buf| {
+                c.print32(std.mem.bytesAsSlice(u32, @alignCast(4, buf)));
+                // c.print(buf);
+                // const stdout = std.io.getStdOut().writer();
+                // nosuspend _ = try stdout.print("print: {s}\n", .{print});
+            },
+            .print32 => |print| {
+                c.print32(print);
+                // const stdout = std.io.getStdOut().writer();
+                // nosuspend _ = try stdout.print("print: {s}\n", .{print});
+            },
+            .print_msg => |print_msg| {
+                c.print_msg(print_msg.user, print_msg.msg);
+            },
+            .render => {
+                c.render();
             },
         }
     }
