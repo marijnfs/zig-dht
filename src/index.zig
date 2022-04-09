@@ -14,6 +14,7 @@ pub const staging = @import("staging.zig");
 pub const timer = @import("timer.zig");
 pub const timer_functions = @import("timer_functions.zig");
 pub const db = @import("db.zig");
+pub const hash = @import("hash.zig");
 pub const c = @import("c.zig");
 
 pub const Server = @import("server.zig").Server;

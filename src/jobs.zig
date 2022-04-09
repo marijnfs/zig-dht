@@ -13,6 +13,7 @@ const connections = index.connections;
 const model = index.model;
 const jobs = index.jobs;
 const c = index.c;
+const hash = index.hash;
 
 const AtomicQueue = index.AtomicQueue;
 const ID = index.ID;
@@ -146,7 +147,7 @@ pub const Job = union(enum) {
                     .message => |message| blk: {
                         const serial_message = try serial.serialise(message);
                         defer default.allocator.free(serial_message);
-                        const hash_message = try append_hash(serial_message);
+                        const hash_message = try hash.append_hash(serial_message);
                         std.log.info("send message with hash of: {}", .{utils.hex(&hash_message.hash)});
                         try model.add_hash(hash_message.hash);
                         break :blk hash_message.slice;
@@ -185,7 +186,7 @@ pub const Job = union(enum) {
             .inbound_forward_message => |inbound_message| {
                 var data_slice = inbound_message.content;
 
-                var hash_slice = try calculate_and_check_hash(data_slice);
+                var hash_slice = try hash.calculate_and_check_hash(data_slice);
 
                 if (try model.check_and_add_hash(hash_slice.hash)) {
                     std.log.info("message dropped, already seen", .{});
@@ -207,7 +208,7 @@ pub const Job = union(enum) {
                 var data_slice = inbound_message.content;
                 // const hash = message.hash;
 
-                var hash_slice = try calculate_and_check_hash(data_slice);
+                var hash_slice = try hash.calculate_and_check_hash(data_slice);
                 if (try model.check_and_add_hash(hash_slice.hash)) {
                     std.log.info("message dropped, already seen", .{});
                     return;
@@ -230,29 +231,3 @@ pub const Job = union(enum) {
         }
     }
 };
-
-const RetType = struct { hash: Hash, slice: []u8 };
-fn calculate_and_check_hash(data_slice: []u8) !RetType {
-    if (data_slice.len < @sizeOf(Hash)) {
-        std.log.info("message dropped", .{});
-        return error.TooShort;
-    }
-
-    const reported_hash: Hash = data_slice[0..@sizeOf(Hash)].*;
-    const body_slice = data_slice[@sizeOf(Hash)..];
-    const calculated_hash = utils.calculate_hash(body_slice);
-    if (!utils.id_is_equal(reported_hash, calculated_hash)) {
-        std.log.info("message dropped, hash doesn't match", .{});
-        return error.FalseHash;
-    }
-    return RetType{ .hash = calculated_hash, .slice = body_slice };
-}
-
-fn append_hash(data_slice: []u8) !RetType {
-    const hash = utils.calculate_hash(data_slice);
-
-    const hash_message = try default.allocator.alloc(u8, hash.len + data_slice.len);
-    std.mem.copy(u8, hash_message[0..hash.len], &hash);
-    std.mem.copy(u8, hash_message[hash.len..], data_slice);
-    return RetType{ .hash = hash, .slice = hash_message };
-}
