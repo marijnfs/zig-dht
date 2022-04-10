@@ -14,6 +14,7 @@ const model = index.model;
 const jobs = index.jobs;
 const c = index.c;
 const hash = index.hash;
+const id_ = index.id;
 
 const AtomicQueue = index.AtomicQueue;
 const ID = index.ID;
@@ -142,7 +143,7 @@ pub const Job = union(enum) {
 
                 var message = try serial.deserialise(communication.Message, &hash_slice.slice);
 
-                if (utils.id_is_zero(message.target_id) or utils.id_is_equal(message.target_id, default.server.id)) {
+                if (id_.is_zero(message.target_id) or id_.is_equal(message.target_id, default.server.id)) {
                     std.log.info("message is for me", .{});
                     try jobs.enqueue(.{ .process_forward = .{ .guid = inbound_message.guid, .message = message } });
                 } else {
@@ -166,7 +167,7 @@ pub const Job = union(enum) {
 
                 std.log.info("process backward message: {any}", .{message});
 
-                if (utils.id_is_equal(message.target_id, default.server.id)) {
+                if (id_.is_equal(message.target_id, default.server.id)) {
                     std.log.info("for me, target_id: {}", .{utils.hex(&message.target_id)});
 
                     try jobs.enqueue(.{ .process_backward = .{ .guid = inbound_message.guid, .message = message } });
@@ -202,7 +203,7 @@ pub const Job = union(enum) {
                 const out_connection = try default.server.connect_and_add(address);
                 std.log.info("Connected {s}", .{address});
                 const content = communication.Content{ .ping = .{ .source_id = default.server.id, .source_port = default.server.config.port } };
-                const message = communication.Message{ .source_id = default.server.id, .nonce = utils.get_guid(), .content = content };
+                const message = communication.Message{ .source_id = default.server.id, .nonce = id_.get_guid(), .content = content };
                 try enqueue(.{ .send_message = .{ .target = .{ .guid = out_connection.guid }, .payload = .{ .message = message } } });
             },
             .callback => |callback| {

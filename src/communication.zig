@@ -7,6 +7,7 @@ const communication = index.communication;
 const routing = index.routing;
 const utils = index.utils;
 const c = index.c;
+const id_ = index.id;
 const ID = index.ID;
 
 // Message contents
@@ -59,7 +60,7 @@ pub const InboundMessage = struct {
 };
 
 fn build_reply(content: Content, source_message: Message, guid: u64) !Envelope {
-    const reply = Message{ .target_id = source_message.source_id, .source_id = default.server.id, .nonce = utils.get_guid(), .content = content };
+    const reply = Message{ .target_id = source_message.source_id, .source_id = default.server.id, .nonce = id_.get_guid(), .content = content };
 
     const envelope = Envelope{
         .target = .{ .guid = guid },
@@ -127,10 +128,10 @@ pub fn process_forward(source_message: Message, guid: u64) !void {
             if (closest_connection) |connection| {
                 // check if the closest connection is closer than us
 
-                const conn_dist = utils.xor(connection.*.id, search_id);
-                const our_dist = utils.xor(default.server.id, search_id);
+                const conn_dist = id_.xor(connection.*.id, search_id);
+                const our_dist = id_.xor(default.server.id, search_id);
 
-                we_are_closest = utils.less(our_dist, conn_dist);
+                we_are_closest = id_.less(our_dist, conn_dist);
             }
 
             if (we_are_closest) {

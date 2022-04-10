@@ -5,6 +5,7 @@ const index = @import("index.zig");
 const default = index.default;
 const connections = index.connections;
 const utils = index.utils;
+const id_ = index.id;
 
 const ID = index.ID;
 
@@ -31,7 +32,7 @@ pub const Server = struct {
 
     pub fn initialize(server: *Server) !void {
         server.stream_server = net.StreamServer.init(net.StreamServer.Options{ .reuse_address = true });
-        server.id = utils.rand_id();
+        server.id = id_.rand_id();
         server.incoming_connections = std.AutoHashMap(*connections.InConnection, void).init(default.allocator);
         server.outgoing_connections = std.AutoHashMap(*connections.OutConnection, void).init(default.allocator);
 
@@ -75,11 +76,11 @@ pub const Server = struct {
         var out_it = server.outgoing_connections.keyIterator();
         while (out_it.next()) |connection| {
             std.log.info("trying to route, looking at connection id:{} addr:{s}", .{ utils.hex(&connection.*.id), connection.*.address });
-            if (utils.id_is_zero(connection.*.id))
+            if (id_.is_zero(connection.*.id))
                 continue;
 
-            const dist = utils.xor(connection.*.id, id);
-            if (utils.id_is_zero(lowest_dist) or utils.less(dist, lowest_dist)) {
+            const dist = id_.xor(connection.*.id, id);
+            if (id_.is_zero(lowest_dist) or id_.less(dist, lowest_dist)) {
                 lowest_dist = dist;
                 best_connection = connection.*;
             }
@@ -100,7 +101,7 @@ pub const Server = struct {
 
             connection.* = .{
                 .stream_connection = stream_connection,
-                .guid = utils.get_guid(),
+                .guid = id_.get_guid(),
             };
             connection.start();
             try server.incoming_connections.putNoClobber(connection, {});
@@ -115,7 +116,7 @@ pub const Server = struct {
         var out_connection = try default.allocator.create(connections.OutConnection);
         out_connection.* = .{
             .address = address,
-            .guid = utils.get_guid(),
+            .guid = id_.get_guid(),
         };
         out_connection.start();
         try server.outgoing_connections.putNoClobber(out_connection, {});

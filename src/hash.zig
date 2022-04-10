@@ -3,6 +3,8 @@ const std = @import("std");
 const index = @import("index.zig");
 const default = index.default;
 const utils = index.utils;
+const id_ = index.id;
+
 const Hash = index.Hash;
 
 const RetType = struct { hash: Hash, slice: []u8 };
@@ -16,7 +18,7 @@ pub fn calculate_and_check_hash(data_slice: []u8) !RetType {
     const reported_hash: Hash = data_slice[0..@sizeOf(Hash)].*;
     const body_slice = data_slice[@sizeOf(Hash)..];
     const calculated_hash = utils.calculate_hash(body_slice);
-    if (!utils.id_is_equal(reported_hash, calculated_hash)) {
+    if (!id_.is_equal(reported_hash, calculated_hash)) {
         std.log.info("message dropped, hash doesn't match", .{});
         return error.FalseHash;
     }

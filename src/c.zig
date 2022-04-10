@@ -8,7 +8,7 @@ const index = @import("index.zig");
 const default = index.default;
 const jobs = index.jobs;
 const communication = index.communication;
-const utils = index.utils;
+const id_ = index.id;
 
 var input_thread: std.Thread = undefined;
 
@@ -126,7 +126,7 @@ pub fn move_char(drow: c_int, dcol: c_int) !void {
             }
         },
     } };
-    const message = communication.Message{ .source_id = default.server.id, .nonce = utils.get_guid(), .content = content };
+    const message = communication.Message{ .source_id = default.server.id, .nonce = id_.get_guid(), .content = content };
 
     try update_user(default.server.config.username, my_state);
     try jobs.enqueue(.{ .broadcast = message });

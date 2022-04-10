@@ -3,6 +3,7 @@ const std = @import("std");
 const index = @import("index.zig");
 const default = index.default;
 const utils = index.utils;
+const id_ = index.id;
 
 const ID = index.ID;
 const Hash = index.Hash;
@@ -23,7 +24,7 @@ pub fn init_finger_table() !void {
     var i: usize = 0;
     std.log.info("finger table init, id is: {}", .{utils.hex(&default.server.id)});
     while (i < FINGERS) : (i += 1) {
-        const id = utils.get_finger_id(default.server.id, i);
+        const id = id_.xor_bitpos(default.server.id, i);
         if (!finger_table.contains(id))
             try finger_table.put(id, .{});
     }
@@ -63,17 +64,17 @@ pub fn get_closest_id(id: ID) !ID {
 
     var closest = std.mem.zeroes(ID);
     while (it.next()) |value| {
-        if (utils.id_is_zero(value.*.id)) //value is not set yet,
+        if (id_.is_zero(value.*.id)) //value is not set yet,
             continue;
-        const distance = utils.xor(id, value.*.id);
-        if (utils.id_is_zero(closest)) //always set
+        const distance = id_.xor(id, value.*.id);
+        if (id_.is_zero(closest)) //always set
             closest = distance;
 
-        if (utils.less(distance, closest))
+        if (id_.less(distance, closest))
             closest = distance;
     }
 
-    if (utils.id_is_zero(closest))
+    if (id_.is_zero(closest))
         return error.NoClosestIdFound;
     return closest;
 }

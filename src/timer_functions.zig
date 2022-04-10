@@ -7,6 +7,7 @@ const jobs = index.jobs;
 const routing = index.routing;
 const utils = index.utils;
 const communication = index.communication;
+const id_ = index.id;
 
 const ID = index.ID;
 
@@ -23,7 +24,7 @@ pub fn expand_connections() !void {
     while (it.next()) |conn| {
         std.log.info("conn: {}", .{conn.*.address});
         const content: communication.Content = .{ .get_known_ips = default.target_connections };
-        const message = communication.Message{ .target_id = std.mem.zeroes(ID), .source_id = default.server.id, .nonce = utils.get_guid(), .content = content };
+        const message = communication.Message{ .target_id = std.mem.zeroes(ID), .source_id = default.server.id, .nonce = id_.get_guid(), .content = content };
 
         const envelope = communication.Envelope{
             .target = .{ .guid = conn.*.guid },
@@ -56,7 +57,7 @@ pub fn sync_finger_table() !void {
     while (it.next()) |finger| {
         const id = finger.key_ptr.*;
         const node = finger.value_ptr.*;
-        if (utils.id_is_zero(node.id))
+        if (id_.is_zero(node.id))
             continue;
         const address = node.address;
         if (default.server.is_connected_to(address))
@@ -71,7 +72,7 @@ pub fn refresh_finger_table() !void {
     var it = routing.finger_table.keyIterator();
     while (it.next()) |id| {
         const content: communication.Content = .{ .find = .{ .id = id.*, .inclusive = 1 } };
-        const message = communication.Message{ .target_id = std.mem.zeroes(ID), .source_id = default.server.id, .nonce = utils.get_guid(), .content = content };
+        const message = communication.Message{ .target_id = std.mem.zeroes(ID), .source_id = default.server.id, .nonce = id_.get_guid(), .content = content };
 
         const envelope = communication.Envelope{
             .target = .{ .id = id.* },

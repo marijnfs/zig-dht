@@ -15,11 +15,18 @@ pub const timer = @import("timer.zig");
 pub const timer_functions = @import("timer_functions.zig");
 pub const db = @import("db.zig");
 pub const hash = @import("hash.zig");
+pub const id = @import("id.zig");
 pub const c = @import("c.zig");
+pub const server = @import("server.zig");
 
-pub const Server = @import("server.zig").Server;
+// Quick Definitions
+pub const Server = server.Server;
+pub const ID = id.ID;
+pub const Hash = id.Hash;
 
 pub var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+
+pub var rng = std.rand.DefaultPrng.init(0);
 
 pub const default = struct {
     pub const allocator = gpa.allocator();
@@ -30,8 +37,9 @@ pub const default = struct {
 };
 
 pub fn init() !void {
+    try seed_rng();
     std.log.info("index.init", .{});
-    utils.init();
+    id.init();
     model.init();
     jobs.init();
     try c.init();
@@ -42,7 +50,7 @@ pub fn deinit() void {
     c.deinit();
 }
 
-// Common types
-const ID_SIZE = 32;
-pub const ID = [ID_SIZE]u8;
-pub const Hash = [ID_SIZE]u8;
+fn seed_rng() !void {
+    const seed = 42; //std.crypto.random.int(u64);
+    rng = std.rand.DefaultPrng.init(seed);
+}
