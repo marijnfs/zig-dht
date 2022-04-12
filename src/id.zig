@@ -10,10 +10,7 @@ pub const Hash = [ID_SIZE]u8;
 var root_guid: u64 = undefined;
 
 pub fn init() void {
-    const seed = 55; //std.crypto.random.int(u64);
-    var rng = std.rand.DefaultPrng.init(seed);
-    root_guid = rng.random().int(u64);
-    std.log.info("id.init root_guid: {}", .{root_guid});
+    root_guid = index.rng.random().int(u64);
 }
 
 pub fn get_guid() u64 {

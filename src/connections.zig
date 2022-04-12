@@ -67,7 +67,6 @@ pub const OutConnection = struct {
     stream_connection: net.Stream = undefined,
     state: State = .Disconnected,
     frame: @Frame(connection_read_loop) = undefined,
-    connect_frame: @Frame(connect) = undefined,
     guid: u64 = 0,
     address: net.Address,
     id: ID = std.mem.zeroes(ID),

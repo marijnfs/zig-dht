@@ -37,8 +37,9 @@ pub const default = struct {
 };
 
 pub fn init() !void {
-    try seed_rng();
     std.log.info("index.init", .{});
+
+    try seed_rng();
     id.init();
     model.init();
     jobs.init();
@@ -51,6 +52,5 @@ pub fn deinit() void {
 }
 
 fn seed_rng() !void {
-    const seed = 42; //std.crypto.random.int(u64);
-    rng = std.rand.DefaultPrng.init(seed);
+    rng = std.rand.DefaultPrng.init(@intCast(u64, std.time.milliTimestamp()));
 }
