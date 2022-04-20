@@ -7,6 +7,12 @@ const ID = index.ID;
 
 pub const hex = std.fmt.fmtSliceHexLower;
 
+pub fn unicodeToInt32(unicode: u21) !u32 {
+    var code: u32 = 0;
+    _ = try std.unicode.utf8Encode(unicode, std.mem.bytesAsSlice(u8, std.mem.asBytes(&code)));
+    return code;
+}
+
 pub fn calculate_hash(data: []const u8) ID {
     var result: ID = undefined;
     std.crypto.hash.Blake3.hash(data, result[0..], .{});

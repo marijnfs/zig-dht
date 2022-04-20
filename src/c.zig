@@ -8,6 +8,7 @@ const index = @import("index.zig");
 const default = index.default;
 const jobs = index.jobs;
 const communication = index.communication;
+const utils = index.utils;
 const id_ = index.id;
 
 var input_thread: std.Thread = undefined;
@@ -142,7 +143,7 @@ const UserState = struct {
     msg: ?[]u32 = null,
 };
 
-var my_state: UserState = .{ .char = 0xb58c9FF0 }; //0x42 };
+var my_state: UserState = .{ .char = 0x0 };
 
 pub fn update_user(user: []u8, state: UserState) !void {
     try user_states.put(user, state);
@@ -211,6 +212,8 @@ pub fn read_loop() !void {
 pub fn init() !void {
     _ = c.setlocale(c.LC_ALL, "en_US.UTF-8");
     _ = c.setlocale(c.LC_CTYPE, "en_US.UTF-8");
+
+    my_state.char = try utils.unicodeToInt32(0x1F601);
 
     nc_context = c.notcurses_init(null, c.stdout);
     if (nc_context == null)
