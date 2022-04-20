@@ -18,6 +18,7 @@ pub const hash = @import("hash.zig");
 pub const id = @import("id.zig");
 pub const c = @import("c.zig");
 pub const server = @import("server.zig");
+pub const bot = @import("bot.zig");
 
 // Quick Definitions
 pub const Server = server.Server;
@@ -43,7 +44,7 @@ pub fn init() !void {
     id.init();
     model.init();
     jobs.init();
-    // try c.init();
+    try c.init();
 }
 
 pub fn deinit() void {

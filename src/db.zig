@@ -33,6 +33,9 @@ pub const Database = struct {
         db.store_dir = try std.fs.cwd().openDir(path, .{ .iterate = true, .no_follow = true });
     }
 
+    // explicitly allows to store non-matching id/data if you want
+    // this can be used to store root files, will however show up as errors in a raw consistency check
+    // but that is expected behaviour (consistency check should not remove the file / maybe adds its under it's direct hash as well)
     pub fn put_persistent(db: *Database, id: ID, data: Blob) !void {
         var path = try idToFilepath(id);
         std.log.info("put_persistent, {s}", .{path});

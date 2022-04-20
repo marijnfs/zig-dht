@@ -157,9 +157,11 @@ pub fn draw_character(plane: ?*c.ncplane, char: u32, text_: ?[]u32, row: c_int, 
 pub fn move_char(drow: c_int, dcol: c_int) !void {
     my_state.row += drow;
     my_state.col += dcol;
+    my_state.id = default.server.id;
+    try update_user(my_state);
 
     const content = communication.Content{ .broadcast = .{
-        .id = default.server.id,
+        .id = my_state.id,
         .char = my_state.char,
         .row = my_state.row,
         .col = my_state.col,
@@ -174,7 +176,6 @@ pub fn move_char(drow: c_int, dcol: c_int) !void {
     } };
     const message = communication.Message{ .source_id = default.server.id, .nonce = id_.get_guid(), .content = content };
 
-    try update_user(my_state);
     try jobs.enqueue(.{ .broadcast = message });
     try jobs.enqueue(.{ .render = true });
 }

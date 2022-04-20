@@ -85,6 +85,7 @@ pub fn process_message(message: Message, guid: u64) !void {
                 .col = broadcast.col,
                 .char = broadcast.char,
                 .msg = broadcast.msg,
+                .id = broadcast.id,
             });
             try jobs.enqueue(.{ .broadcast = message });
             // try jobs.enqueue(.{ .print_msg = .{ .user = broadcast.user, .msg = broadcast.msg } });
