@@ -43,7 +43,7 @@ pub fn init() !void {
     id.init();
     model.init();
     jobs.init();
-try c.init();
+    try c.init();
     try db.init();
 }
 

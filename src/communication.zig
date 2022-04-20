@@ -12,7 +12,7 @@ const ID = index.ID;
 
 // Message contents
 
-const BroadcastMessage = struct { user: []u8, msg: ?[]u32, char: u32, row: c_int = 0, col: c_int = 0 };
+const BroadcastMessage = struct { id: ID, username: []u8, msg: ?[]u32, char: u32, row: c_int = 0, col: c_int = 0 };
 
 pub const Content = union(enum) {
     ping: struct {
@@ -79,7 +79,8 @@ pub fn process_message(message: Message, guid: u64) !void {
     switch (content) {
         .broadcast => |broadcast| {
             std.log.info("broadcast: '{s}'", .{broadcast});
-            try c.update_user(broadcast.user, .{
+            try c.update_user(.{
+                .username = broadcast.username,
                 .row = broadcast.row,
                 .col = broadcast.col,
                 .char = broadcast.char,

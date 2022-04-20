@@ -10,12 +10,56 @@ const jobs = index.jobs;
 const communication = index.communication;
 const utils = index.utils;
 const id_ = index.id;
+const ID = index.ID;
 
 var input_thread: std.Thread = undefined;
 
 var nc_context: ?*c.notcurses = undefined;
 var nc_plane: ?*c.ncplane = undefined;
 var nc_line_plane: ?*c.ncplane = undefined;
+
+var msg_buf = std.ArrayList(u32).init(default.allocator);
+
+const UserState = struct {
+    username: []u8 = undefined,
+    id: ID = undefined,
+    char: u32,
+    row: c_int = 0,
+    col: c_int = 0,
+    msg: ?[]u32 = null,
+};
+
+var my_state: UserState = .{ .char = 0x0 };
+
+pub fn init() !void {
+    _ = c.setlocale(c.LC_ALL, "en_US.UTF-8");
+    _ = c.setlocale(c.LC_CTYPE, "en_US.UTF-8");
+
+    my_state.char = try utils.unicodeToInt32(0x1F601);
+
+    nc_context = c.notcurses_init(null, c.stdout);
+    if (nc_context == null)
+        return error.NotCursesFailedInit;
+    nc_plane = c.notcurses_top(nc_context);
+    _ = c.ncplane_set_scrolling(nc_plane, 0);
+
+    var plane_options = std.mem.zeroes(c.ncplane_options);
+    plane_options.y = c.NCALIGN_BOTTOM;
+    plane_options.x = c.NCALIGN_LEFT;
+    plane_options.rows = 1;
+    plane_options.cols = 80;
+    plane_options.flags = c.NCPLANE_OPTION_HORALIGNED | c.NCPLANE_OPTION_VERALIGNED | c.NCPLANE_OPTION_FIXED;
+    nc_line_plane = c.ncplane_create(nc_plane, &plane_options);
+
+    input_thread = try std.Thread.spawn(.{}, read_loop, .{});
+}
+
+pub fn update_user(state: UserState) !void {
+    try user_states.put(state.id, state);
+    try jobs.enqueue(.{ .render = true });
+}
+
+var user_states = std.AutoHashMap(ID, UserState).init(default.allocator);
 
 pub fn print(str: []u8) void {
     for (str) |char| {
@@ -115,10 +159,11 @@ pub fn move_char(drow: c_int, dcol: c_int) !void {
     my_state.col += dcol;
 
     const content = communication.Content{ .broadcast = .{
+        .id = default.server.id,
         .char = my_state.char,
         .row = my_state.row,
         .col = my_state.col,
-        .user = try default.allocator.dupe(u8, default.server.config.username),
+        .username = try default.allocator.dupe(u8, default.server.config.username),
         .msg = blk: {
             if (my_state.msg) |msg| {
                 break :blk try default.allocator.dupe(u32, msg);
@@ -129,28 +174,11 @@ pub fn move_char(drow: c_int, dcol: c_int) !void {
     } };
     const message = communication.Message{ .source_id = default.server.id, .nonce = id_.get_guid(), .content = content };
 
-    try update_user(default.server.config.username, my_state);
+    try update_user(my_state);
     try jobs.enqueue(.{ .broadcast = message });
     try jobs.enqueue(.{ .render = true });
 }
 
-var msg_buf = std.ArrayList(u32).init(default.allocator);
-
-const UserState = struct {
-    char: u32,
-    row: c_int = 0,
-    col: c_int = 0,
-    msg: ?[]u32 = null,
-};
-
-var my_state: UserState = .{ .char = 0x0 };
-
-pub fn update_user(user: []u8, state: UserState) !void {
-    try user_states.put(user, state);
-    try jobs.enqueue(.{ .render = true });
-}
-
-var user_states = std.StringArrayHashMap(UserState).init(default.allocator);
 pub fn render() void {
     // draw base
     c.ncplane_erase(nc_line_plane);
@@ -207,29 +235,6 @@ pub fn read_loop() !void {
             try jobs.enqueue(.{ .render = true });
         }
     }
-}
-
-pub fn init() !void {
-    _ = c.setlocale(c.LC_ALL, "en_US.UTF-8");
-    _ = c.setlocale(c.LC_CTYPE, "en_US.UTF-8");
-
-    my_state.char = try utils.unicodeToInt32(0x1F601);
-
-    nc_context = c.notcurses_init(null, c.stdout);
-    if (nc_context == null)
-        return error.NotCursesFailedInit;
-    nc_plane = c.notcurses_top(nc_context);
-    _ = c.ncplane_set_scrolling(nc_plane, 0);
-
-    var plane_options = std.mem.zeroes(c.ncplane_options);
-    plane_options.y = c.NCALIGN_BOTTOM;
-    plane_options.x = c.NCALIGN_LEFT;
-    plane_options.rows = 1;
-    plane_options.cols = 80;
-    plane_options.flags = c.NCPLANE_OPTION_HORALIGNED | c.NCPLANE_OPTION_VERALIGNED | c.NCPLANE_OPTION_FIXED;
-    nc_line_plane = c.ncplane_create(nc_plane, &plane_options);
-
-    input_thread = try std.Thread.spawn(.{}, read_loop, .{});
 }
 
 pub fn deinit() void {
