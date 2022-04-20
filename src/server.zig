@@ -36,7 +36,7 @@ pub const Server = struct {
         server.incoming_connections = std.AutoHashMap(*connections.InConnection, void).init(default.allocator);
         server.outgoing_connections = std.AutoHashMap(*connections.OutConnection, void).init(default.allocator);
 
-        std.log.info("Connecting to {s}:{}", .{ server.config.name, server.config.port });
+        std.log.info("Connecting server on {s}:{}", .{ server.config.name, server.config.port });
         const localhost = try net.Address.parseIp(server.config.name, server.config.port);
         try server.stream_server.listen(localhost);
 
@@ -103,7 +103,7 @@ pub const Server = struct {
                 .stream_connection = stream_connection,
                 .guid = id_.get_guid(),
             };
-            connection.start();
+            connection.start_read_loop();
             try server.incoming_connections.putNoClobber(connection, {});
         }
         @panic("loop ended");
@@ -118,7 +118,7 @@ pub const Server = struct {
             .address = address,
             .guid = id_.get_guid(),
         };
-        out_connection.start();
+        try out_connection.connect();
         try server.outgoing_connections.putNoClobber(out_connection, {});
         return out_connection;
     }

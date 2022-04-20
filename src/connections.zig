@@ -37,7 +37,7 @@ pub const InConnection = struct {
             return error.WriteError;
     }
 
-    pub fn start(connection: *InConnection) void {
+    pub fn start_read_loop(connection: *InConnection) void {
         connection.frame = async connection.connection_read_loop();
     }
 
@@ -59,7 +59,7 @@ pub const InConnection = struct {
                 break;
         }
 
-        defer stream_connection.stream.close();
+        stream_connection.stream.close();
     }
 };
 
@@ -83,7 +83,7 @@ pub const OutConnection = struct {
             connection.state = .Error;
         }
         connection.stream_connection = try net.tcpConnectToAddress(connection.address);
-        connection.frame = async connection.connection_read_loop();
+        connection.start_read_loop();
         connection.state = .Connected;
     }
 
@@ -96,7 +96,7 @@ pub const OutConnection = struct {
             return error.WriteError;
     }
 
-    pub fn start(connection: *OutConnection) void {
+    pub fn start_read_loop(connection: *OutConnection) void {
         connection.frame = async connection.connection_read_loop();
     }
 
@@ -105,7 +105,7 @@ pub const OutConnection = struct {
     }
 
     pub fn connection_read_loop(connection: *OutConnection) !void {
-        std.log.info("connection to {}", .{connection.address});
+        std.log.info("starting read on {}", .{connection.address});
         var buf: [READ_BUF_SIZE]u8 = undefined;
 
         errdefer {
@@ -123,8 +123,10 @@ pub const OutConnection = struct {
 
             try jobs.enqueue(.{ .inbound_backward_message = .{ .guid = connection.guid, .content = try default.allocator.dupe(u8, buf[0..len]) } });
 
-            if (len == 0)
+            if (len == 0) {
+                std.log.info("read 0 bytes, stopping {}", .{connection.address});
                 break;
+            }
         }
         connection.close();
     }
