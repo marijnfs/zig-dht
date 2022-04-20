@@ -10,12 +10,13 @@ const timer_functions = dht.timer_functions;
 const jobs = dht.jobs;
 const routing = dht.routing;
 const staging = dht.staging;
+const db = dht.db;
 
 const c = dht.c;
 const Server = dht.Server;
 const ID = dht.ID;
 
-pub const log_level: std.log.Level = .warn;
+// pub const log_level: std.log.Level = .warn;
 
 var log_file: std.fs.File = undefined;
 
@@ -78,7 +79,27 @@ fn filetest() !void {
 //     nosuspend stderr.print(prefix ++ format ++ "\n", args) catch return;
 // }
 
+pub fn db_test() !void {
+    var database = try db.Database.create("test");
+    const data_id = utils.calculate_hash("sdf");
+
+    // var data_id = try database.put("sdf");
+    std.log.info("store id {s}", .{utils.hex(&data_id)});
+
+    var loaded = try database.get(data_id);
+
+    std.log.info("loaded: {s}", .{loaded});
+    _ = database.store.remove(data_id);
+    std.log.info("removing from memory: {s}", .{utils.hex(&data_id)});
+
+    var loaded_file = try database.get(data_id);
+
+    std.log.info("loaded again: {s}", .{loaded_file});
+}
+
 pub fn main() !void {
+    try db_test();
+
     log_file = try std.fs.cwd().createFile("log.txt", .{});
 
     var args = try std.process.argsAlloc(default.allocator);
