@@ -16,7 +16,7 @@ const c = dht.c;
 const Server = dht.Server;
 const ID = dht.ID;
 
-pub const log_level: std.log.Level = .warn;
+// pub const log_level: std.log.Level = .warn;
 
 var log_file: std.fs.File = undefined;
 
@@ -57,30 +57,30 @@ fn filetest() !void {
     unreachable;
 }
 
-// pub fn log(
-//     comptime level: std.log.Level,
-//     comptime scope: @TypeOf(.EnumLiteral),
-//     comptime format: []const u8,
-//     args: anytype,
-// ) void {
-//     // Ignore all non-error logging from sources other than
-//     // .my_project, .nice_library and .default
-//     const scope_prefix = "(" ++ switch (scope) {
-//         .my_project, .nice_library, .default => @tagName(scope),
-//         else => if (@enumToInt(level) <= @enumToInt(std.log.Level.err))
-//             @tagName(scope)
-//         else
-//             return,
-//     } ++ "): ";
+pub fn log(
+    comptime level: std.log.Level,
+    comptime scope: @TypeOf(.EnumLiteral),
+    comptime format: []const u8,
+    args: anytype,
+) void {
+    // Ignore all non-error logging from sources other than
+    // .my_project, .nice_library and .default
+    const scope_prefix = "(" ++ switch (scope) {
+        .my_project, .nice_library, .default => @tagName(scope),
+        else => if (@enumToInt(level) <= @enumToInt(std.log.Level.err))
+            @tagName(scope)
+        else
+            return,
+    } ++ "): ";
 
-//     const prefix = "[" ++ level.asText() ++ "] " ++ scope_prefix;
-//     const stderr = log_file.writer();
+    const prefix = "[" ++ level.asText() ++ "] " ++ scope_prefix;
+    const stderr = log_file.writer();
 
-//     nosuspend stderr.print(prefix ++ format ++ "\n", args) catch return;
-// }
+    nosuspend stderr.print(prefix ++ format ++ "\n", args) catch return;
+}
 
 pub fn main() !void {
-    log_file = try std.fs.cwd().createFile("log.txt", .{});
+    log_file = try std.fs.cwd().createFile("log.txt", .{ .intended_io_mode = .blocking });
 
     var args = try std.process.argsAlloc(default.allocator);
     defer std.process.argsFree(default.allocator, args);

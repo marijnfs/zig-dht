@@ -62,6 +62,7 @@ pub const Connection = struct {
         defer {
             std.log.info("stopping connection to {}", .{connection.address});
             connection.state = .Disconnected;
+            connection.close();
         }
 
         while (true) {
@@ -75,7 +76,6 @@ pub const Connection = struct {
                 break;
             }
         }
-        connection.close();
     }
 
     pub fn format(
