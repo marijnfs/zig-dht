@@ -109,3 +109,23 @@ pub const Database = struct {
         return path;
     }
 };
+
+test "test basics" {
+    var database = try Database.create("test");
+    const data = "sdf";
+    const data_id = try database.put(data);
+
+    try std.testing.expectEqualSlices(u8, &data_id, &utils.calculate_hash(data));
+
+    std.log.info("store id {s}", .{utils.hex(&data_id)});
+
+    var loaded = try database.get(data_id);
+
+    std.log.info("loaded: {s}", .{loaded});
+    _ = database.store.remove(data_id);
+    std.log.info("removing from memory: {s}", .{utils.hex(&data_id)});
+
+    var loaded_file = try database.get(data_id);
+    try std.testing.expectEqualSlices(u8, loaded, loaded_file);
+    try std.testing.expectEqualSlices(u8, loaded, loaded_file);
+}
