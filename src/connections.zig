@@ -10,61 +10,8 @@ const ID = index.ID;
 
 const READ_BUF_SIZE = 1024 * 128; //128 kb
 
-// pub fn route_hash(hash: ID) ?u64 {
-//     return connection_router.get(hash);
-// }
-
-pub const InConnection = struct {
-    stream_connection: net.StreamServer.Connection,
-    state: State = .Connected,
-    frame: @Frame(connection_read_loop) = undefined,
-    guid: u64 = 0,
-    id: ID = std.mem.zeroes(ID),
-
-    const State = enum {
-        Connected,
-        Disconnected,
-    };
-
-    pub fn address(conn: *InConnection) std.net.Address {
-        return conn.stream_connection.address;
-    }
-
-    pub fn write(connection: *InConnection, buf: []u8) !void {
-        std.log.info("write n:{}", .{buf.len});
-        const len = try connection.stream_connection.stream.write(buf);
-        if (len != buf.len)
-            return error.WriteError;
-    }
-
-    pub fn start_read_loop(connection: *InConnection) void {
-        connection.frame = async connection.connection_read_loop();
-    }
-
-    pub fn connection_read_loop(connection: *InConnection) !void {
-        const stream_connection = connection.stream_connection;
-        std.log.info("connection from {}", .{stream_connection.address});
-        var buf: [READ_BUF_SIZE]u8 = undefined;
-
-        defer {
-            std.log.info("disconnected {}", .{stream_connection});
-            connection.state = .Disconnected;
-        }
-
-        while (true) {
-            var len = try stream_connection.stream.read(&buf);
-            try jobs.enqueue(.{ .inbound_forward_message = .{ .guid = connection.guid, .content = try default.allocator.dupe(u8, buf[0..len]) } });
-
-            if (len == 0)
-                break;
-        }
-
-        stream_connection.stream.close();
-    }
-};
-
-pub const OutConnection = struct {
-    stream_connection: net.Stream = undefined,
+pub const Connection = struct {
+    stream: net.Stream = undefined,
     state: State = .Disconnected,
     frame: @Frame(connection_read_loop) = undefined,
     guid: u64 = 0,
@@ -77,34 +24,34 @@ pub const OutConnection = struct {
         Error,
     };
 
-    pub fn connect(connection: *OutConnection) !void {
+    pub fn connect(connection: *Connection) !void {
         connection.state = .Disconnected;
         errdefer {
             connection.state = .Error;
         }
-        connection.stream_connection = try net.tcpConnectToAddress(connection.address);
+        connection.stream = try net.tcpConnectToAddress(connection.address);
         connection.start_read_loop();
         connection.state = .Connected;
     }
 
-    pub fn write(connection: *OutConnection, buf: []u8) !void {
+    pub fn write(connection: *Connection, buf: []u8) !void {
         std.log.info("write n:{}", .{buf.len});
 
         errdefer connection.state = .Disconnected;
-        const len = try connection.stream_connection.write(buf);
+        const len = try connection.stream.write(buf);
         if (len != buf.len)
             return error.WriteError;
     }
 
-    pub fn start_read_loop(connection: *OutConnection) void {
+    pub fn start_read_loop(connection: *Connection) void {
         connection.frame = async connection.connection_read_loop();
     }
 
-    pub fn close(connection: *OutConnection) void {
-        connection.stream_connection.close();
+    pub fn close(connection: *Connection) void {
+        connection.stream.close();
     }
 
-    pub fn connection_read_loop(connection: *OutConnection) !void {
+    pub fn connection_read_loop(connection: *Connection) !void {
         std.log.info("starting read on {}", .{connection.address});
         var buf: [READ_BUF_SIZE]u8 = undefined;
 
@@ -118,10 +65,10 @@ pub const OutConnection = struct {
         }
 
         while (true) {
-            var len = try connection.stream_connection.read(&buf);
+            var len = try connection.stream.read(&buf);
             std.log.info("read incoming backward len:{} ", .{buf.len});
 
-            try jobs.enqueue(.{ .inbound_backward_message = .{ .guid = connection.guid, .content = try default.allocator.dupe(u8, buf[0..len]) } });
+            try jobs.enqueue(.{ .inbound_message = .{ .guid = connection.guid, .content = try default.allocator.dupe(u8, buf[0..len]) } });
 
             if (len == 0) {
                 std.log.info("read 0 bytes, stopping {}", .{connection.address});
@@ -132,7 +79,7 @@ pub const OutConnection = struct {
     }
 
     pub fn format(
-        self: *OutConnection,
+        self: *Connection,
         comptime fmt: []const u8,
         options: std.fmt.FormatOptions,
         writer: anytype,

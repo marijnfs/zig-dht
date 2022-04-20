@@ -21,8 +21,8 @@ pub const Server = struct {
     stream_server: net.StreamServer,
     id: ID = std.mem.zeroes(ID),
     apparent_address: ?std.net.Address = null,
-    incoming_connections: std.AutoHashMap(*connections.InConnection, void),
-    outgoing_connections: std.AutoHashMap(*connections.OutConnection, void),
+    incoming_connections: std.AutoHashMap(*connections.Connection, void),
+    outgoing_connections: std.AutoHashMap(*connections.Connection, void),
 
     pub fn create(config: Config) !*Server {
         var server = try default.allocator.create(Server);
@@ -33,8 +33,8 @@ pub const Server = struct {
     pub fn initialize(server: *Server) !void {
         server.stream_server = net.StreamServer.init(net.StreamServer.Options{ .reuse_address = true });
         server.id = id_.rand_id();
-        server.incoming_connections = std.AutoHashMap(*connections.InConnection, void).init(default.allocator);
-        server.outgoing_connections = std.AutoHashMap(*connections.OutConnection, void).init(default.allocator);
+        server.incoming_connections = std.AutoHashMap(*connections.Connection, void).init(default.allocator);
+        server.outgoing_connections = std.AutoHashMap(*connections.Connection, void).init(default.allocator);
 
         std.log.info("Connecting server on {s}:{}", .{ server.config.name, server.config.port });
         const localhost = try net.Address.parseIp(server.config.name, server.config.port);
@@ -51,7 +51,7 @@ pub const Server = struct {
         std.log.info("Server Ended", .{});
     }
 
-    pub fn get_incoming_connection(server: *Server, guid: u64) !*connections.InConnection {
+    pub fn get_incoming_connection(server: *Server, guid: u64) !*connections.Connection {
         var it = server.incoming_connections.keyIterator();
         while (it.next()) |conn| {
             if (conn.*.guid == guid)
@@ -60,7 +60,7 @@ pub const Server = struct {
         return error.NotFound;
     }
 
-    pub fn get_outgoing_connection(server: *Server, guid: u64) !*connections.OutConnection {
+    pub fn get_outgoing_connection(server: *Server, guid: u64) !*connections.Connection {
         var it = server.outgoing_connections.keyIterator();
         while (it.next()) |conn| {
             if (conn.*.guid == guid)
@@ -69,8 +69,8 @@ pub const Server = struct {
         return error.NotFound;
     }
 
-    pub fn get_closest_outgoing_connection(server: *Server, id: ID) ?*connections.OutConnection {
-        var best_connection: ?*connections.OutConnection = null;
+    pub fn get_closest_outgoing_connection(server: *Server, id: ID) ?*connections.Connection {
+        var best_connection: ?*connections.Connection = null;
         var lowest_dist = std.mem.zeroes(ID);
 
         var out_it = server.outgoing_connections.keyIterator();
@@ -97,11 +97,12 @@ pub const Server = struct {
             var stream_connection = try server.stream_server.accept();
 
             std.log.info("accepting connection from {}", .{stream_connection});
-            var connection = try default.allocator.create(connections.InConnection); //append the frame before assigning to it, it can't move in Memory
+            var connection = try default.allocator.create(connections.Connection); //append the frame before assigning to it, it can't move in Memory
 
             connection.* = .{
-                .stream_connection = stream_connection,
                 .guid = id_.get_guid(),
+                .stream = stream_connection.stream,
+                .address = stream_connection.address,
             };
             connection.start_read_loop();
             try server.incoming_connections.putNoClobber(connection, {});
@@ -109,11 +110,11 @@ pub const Server = struct {
         @panic("loop ended");
     }
 
-    pub fn connect_and_add(server: *Server, address: net.Address) !*connections.OutConnection {
+    pub fn connect_and_add(server: *Server, address: net.Address) !*connections.Connection {
         errdefer {
             std.log.info("Failed to connect to {}", .{address});
         }
-        var out_connection = try default.allocator.create(connections.OutConnection);
+        var out_connection = try default.allocator.create(connections.Connection);
         out_connection.* = .{
             .address = address,
             .guid = id_.get_guid(),
@@ -133,7 +134,7 @@ pub const Server = struct {
     }
 
     pub fn clean_incoming_connections(server: *Server) !void {
-        var list = std.ArrayList(*connections.InConnection).init(default.allocator);
+        var list = std.ArrayList(*connections.Connection).init(default.allocator);
         defer list.deinit();
 
         var it = server.incoming_connections.keyIterator();
@@ -152,7 +153,7 @@ pub const Server = struct {
     }
 
     pub fn clean_outgoing_connections(server: *Server) !void {
-        var list = std.ArrayList(*connections.OutConnection).init(default.allocator);
+        var list = std.ArrayList(*connections.Connection).init(default.allocator);
         defer list.deinit();
 
         var it = server.outgoing_connections.keyIterator();
