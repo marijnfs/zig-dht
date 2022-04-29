@@ -63,18 +63,20 @@ pub fn get_closest_id(id: ID) !ID {
     var it = finger_table.valueIterator();
 
     var closest = std.mem.zeroes(ID);
-    while (it.next()) |value| {
-        if (id_.is_zero(value.*.id)) //value is not set yet,
-            continue;
-        const distance = id_.xor(id, value.*.id);
-        if (id_.is_zero(closest)) //always set
-            closest = distance;
+    var closest_id = std.mem.zeroes(ID);
 
-        if (id_.less(distance, closest))
+    while (it.next()) |finger| {
+        const finger_id = finger.*.id;
+        if (id_.is_zero(finger_id)) //value is not set yet,
+            continue;
+        const distance = id_.xor(id, finger_id);
+        if (id_.is_zero(closest) or id_.less(distance, closest)) {
             closest = distance;
+            closest_id = finger_id;
+        }
     }
 
-    if (id_.is_zero(closest))
+    if (id_.is_zero(closest_id))
         return error.NoClosestIdFound;
-    return closest;
+    return closest_id;
 }

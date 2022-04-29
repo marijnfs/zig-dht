@@ -1,6 +1,7 @@
 // Index file that includes the individual classes etc. that are used throughout the software.
 
 const std = @import("std");
+const time = std.time;
 
 pub const jobs = @import("jobs.zig");
 pub const connections = @import("connections.zig");
@@ -50,7 +51,16 @@ pub fn deinit() void {
     c.deinit();
 }
 
-fn seed_rng() !void {
-    const seed = 42; //std.crypto.random.int(u64);
+pub fn seed_rng() !void {
+    // const seed = std.crypto.random.int(u64);
+    // const random = std.crypto.random;
+    // const seed = random.int(u64);
+    const seed = @intCast(u64, time.milliTimestamp());
     rng = std.rand.DefaultPrng.init(seed);
+}
+
+test "rng" {
+    const random = std.crypto.random;
+    const seed = random.int(u64);
+    std.log.info("{}", .{seed});
 }

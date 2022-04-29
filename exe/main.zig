@@ -15,43 +15,46 @@ const c = dht.c;
 const Server = dht.Server;
 const ID = dht.ID;
 
-pub const log_level: std.log.Level = .warn;
+// pub const log_level: std.log.Level = .warn;
 
 pub fn time_test() void {
     std.log.info("timer", .{});
 }
 
+// Define root.log to override the std implementation
+pub fn log(
+    comptime level: std.log.Level,
+    comptime scope: @TypeOf(.EnumLiteral),
+    comptime format: []const u8,
+    args: anytype,
+) void {
+    // Ignore all non-error logging from sources other than
+    // .my_project, .nice_library and .default
+    const scope_prefix = "(" ++ switch (scope) {
+        .my_project, .nice_library, .default => @tagName(scope),
+        else => if (@enumToInt(level) <= @enumToInt(std.log.Level.err))
+            @tagName(scope)
+        else
+            return,
+    } ++ "): ";
+
+    const prefix = "[" ++ level.asText() ++ "] " ++ scope_prefix;
+
+    // Print the message to stderr, silently ignoring any errors
+    std.debug.getStderrMutex().lock();
+    defer std.debug.getStderrMutex().unlock();
+    const stderr = std.io.getStdErr().writer();
+    nosuspend stderr.print(prefix ++ format ++ "\n", args) catch return;
+}
+
 fn filetest() !void {
-    // var file = try std.fs.cwd().openFile("foo.txt", .{});
-    // defer file.close();
-
-    // while (true) {
-    //     var buf: [64 << 10]u8 = undefined;
-    //     const read = try file.read(&buf);
-    //     if (read == 0)
-    //         break;
-
-    //     const blob = try std.mem.dupe(default.allocator, u8, buf[0..read]);
-    //     _ = try index.db.database.put(blob);
-    // }
-
-    // const tmp: []u8 = try default.allocator.alloc(u8, 10);
-    // tmp[0] = 42;
-    // const id = try index.db.database.put(tmp);
-    // const blob = index.db.database.get(id);
-    // std.log.info("id: {any}", .{id});
-    // std.log.info("blob: {any}", .{blob});
-    // std.log.info("read: {any}", .{index.db.database.store.count()});
-
     var cwd = std.fs.cwd();
     var dir = try cwd.openDir("test", .{ .iterate = true });
-    // var dir = try std.fs.openDirAbsolute("test", .{ .iterate = true });
 
     var walker = try dir.walk(default.allocator);
     while (try walker.next()) |entry| {
         std.log.err("entry {}", .{entry});
     }
-    unreachable;
 }
 
 pub fn main() !void {
