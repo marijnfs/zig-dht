@@ -19,6 +19,7 @@ pub const hash = @import("hash.zig");
 pub const id = @import("id.zig");
 pub const c = @import("c.zig");
 pub const server = @import("server.zig");
+pub const bot = @import("bot.zig");
 
 // Quick Definitions
 pub const Server = server.Server;
@@ -38,13 +39,13 @@ pub const default = struct {
 };
 
 pub fn init() !void {
-    try seed_rng();
     std.log.info("index.init", .{});
+
+    try seed_rng();
     id.init();
     model.init();
     jobs.init();
     try c.init();
-    try db.init();
 }
 
 pub fn deinit() void {
@@ -53,8 +54,6 @@ pub fn deinit() void {
 
 pub fn seed_rng() !void {
     // const seed = std.crypto.random.int(u64);
-    // const random = std.crypto.random;
-    // const seed = random.int(u64);
     const seed = @intCast(u64, time.milliTimestamp());
     rng = std.rand.DefaultPrng.init(seed);
 }

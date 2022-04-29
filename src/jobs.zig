@@ -36,10 +36,6 @@ pub fn enqueue(job: Job) !void {
 pub fn job_loop() !void {
     while (true) {
         if (job_queue.pop()) |job| {
-            // const stdout = std.io.getStdOut().writer();
-            // nosuspend stdout.print("job: {any}\n", .{job}) catch unreachable;
-            // const data = try std.fmt.allocPrint(default.allocator, "job: {any}\n", .{job});
-            // c.print(data);
             std.log.info("Work: {}", .{job});
             job.work() catch |e| {
                 std.log.info("Work Error: {}", .{e});
@@ -59,31 +55,21 @@ pub const Job = union(enum) {
     broadcast: communication.Message,
     connect: std.net.Address,
     send_message: communication.Envelope,
-    inbound_forward_message: communication.InboundMessage,
-    inbound_backward_message: communication.InboundMessage,
+    inbound_message: communication.InboundMessage,
     print: []u8,
     print32: []u32,
     print_msg: struct { user: []u8, msg: []u32 },
-    process_forward: struct {
-        guid: u64,
-        message: communication.Message,
-    },
-    process_backward: struct {
+    process_message: struct {
         guid: u64,
         message: communication.Message,
     },
     callback: fn () anyerror!void,
     fn work(self: *Job) !void {
         switch (self.*) {
-            .process_forward => |guid_message| {
+            .process_message => |guid_message| {
                 const message = guid_message.message;
                 const guid = guid_message.guid;
-                try communication.process_forward(message, guid);
-            },
-            .process_backward => |guid_message| {
-                const message = guid_message.message;
-                const guid = guid_message.guid;
-                try communication.process_backward(message, guid);
+                try communication.process_message(message, guid);
             },
             // Multi function send message,
             // both for incoming and outgoing messages
@@ -131,7 +117,7 @@ pub const Job = union(enum) {
                     },
                 }
             },
-            .inbound_forward_message => |inbound_message| {
+            .inbound_message => |inbound_message| {
                 var data_slice = inbound_message.content;
 
                 var hash_slice = try hash.calculate_and_check_hash(data_slice);
@@ -145,38 +131,13 @@ pub const Job = union(enum) {
 
                 if (id_.is_zero(message.target_id) or id_.is_equal(message.target_id, default.server.id)) {
                     std.log.info("message is for me", .{});
-                    try jobs.enqueue(.{ .process_forward = .{ .guid = inbound_message.guid, .message = message } });
+                    try jobs.enqueue(.{ .process_message = .{ .guid = inbound_message.guid, .message = message } });
                 } else {
                     try jobs.enqueue(.{ .send_message = .{ .target = .{ .id = message.target_id }, .payload = .{ .raw = data_slice } } });
                 }
 
                 std.log.info("process forward message: {any}", .{message});
             },
-            .inbound_backward_message => |inbound_message| {
-                var data_slice = inbound_message.content;
-                // const hash = message.hash;
-
-                var hash_slice = try hash.calculate_and_check_hash(data_slice);
-                if (try model.check_and_add_hash(hash_slice.hash)) {
-                    std.log.info("message dropped, already seen", .{});
-                    return;
-                }
-
-                data_slice = hash_slice.slice;
-                const message = try serial.deserialise(communication.Message, &data_slice);
-
-                std.log.info("process backward message: {any}", .{message});
-
-                if (id_.is_equal(message.target_id, default.server.id)) {
-                    std.log.info("for me, target_id: {}", .{utils.hex(&message.target_id)});
-
-                    try jobs.enqueue(.{ .process_backward = .{ .guid = inbound_message.guid, .message = message } });
-                } else {
-                    std.log.info("pass on, target_id: {}", .{utils.hex(&message.target_id)});
-                    try jobs.enqueue(.{ .send_message = .{ .target = .{ .id = message.target_id }, .payload = .{ .raw = data_slice } } });
-                }
-            },
-
             .broadcast => |broadcast_message| {
                 std.log.info("broadcasting: {s}", .{broadcast_message});
                 var it = default.server.outgoing_connections.keyIterator();
@@ -190,7 +151,6 @@ pub const Job = union(enum) {
                     try jobs.enqueue(.{ .send_message = .{ .target = .{ .guid = conn.*.guid }, .payload = .{ .message = broadcast_message } } });
                 }
             },
-
             .connect => |address| {
                 if (default.server.apparent_address) |apparent_address| {
                     if (std.net.Address.eql(address, apparent_address)) {
@@ -211,14 +171,9 @@ pub const Job = union(enum) {
             },
             .print => |buf| {
                 c.print32(std.mem.bytesAsSlice(u32, @alignCast(4, buf)));
-                // c.print(buf);
-                // const stdout = std.io.getStdOut().writer();
-                // nosuspend _ = try stdout.print("print: {s}\n", .{print});
             },
             .print32 => |print| {
                 c.print32(print);
-                // const stdout = std.io.getStdOut().writer();
-                // nosuspend _ = try stdout.print("print: {s}\n", .{print});
             },
             .print_msg => |print_msg| {
                 c.print_msg(print_msg.user, print_msg.msg);

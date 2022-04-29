@@ -1,4 +1,6 @@
 # TODO:
+> After resolution; do we need incoming/outgoing distingtion
+> Find some resolution to combine InConnection and OutConnection
 > Create priority job queue
 > Reenable crypto seed init (segfaults now, known zig issue)
 > Extract smiley app from backend
