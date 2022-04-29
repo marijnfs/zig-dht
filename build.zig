@@ -16,8 +16,8 @@ pub fn build(b: *std.build.Builder) void {
     autogen_step.cwd = "./build-notcurses.sh";
 
     const exe = b.addExecutable("zig-dht", "exe/main.zig");
-    exe.addLibraryPath("/usr/lib/x86_64-linux-gnu");
-    exe.addLibraryPath("/usr/lib64");
+    exe.addLibPath("/usr/lib/x86_64-linux-gnu");
+    exe.addLibPath("/usr/lib64");
     exe.addPackagePath("dht", "src/index.zig");
     exe.setTarget(target);
     exe.setBuildMode(mode);
