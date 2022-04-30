@@ -23,32 +23,32 @@ const JobQueue = index.JobQueue;
 // Jobs
 // Main application logic
 pub const ServerJob = union(enum) {
-    broadcast: communication.Message,
+    broadcast: communication.Envelope,
     connect: std.net.Address,
-    send_message: communication.Envelope,
+    send_message: communication.OutboundMessage,
     inbound_message: communication.InboundMessage,
     process_message: struct {
-        guid: u64,
-        message: communication.Message,
+        guid: u64, //connection guid
+        envelope: communication.Envelope,
     },
     callback: fn () anyerror!void,
 
     pub fn work(self: *ServerJob, queue: *JobQueue(ServerJob)) !void {
         switch (self.*) {
             .process_message => |guid_message| {
-                const message = guid_message.message;
+                const envelope = guid_message.envelope;
                 const guid = guid_message.guid;
-                try communication.process_message(message, guid);
+                try communication.process_message(envelope, guid);
             },
             // Multi function send message,
             // both for incoming and outgoing messages
-            .send_message => |envelope| {
-                const payload = envelope.payload;
+            .send_message => |outbound_message| {
+                const payload = outbound_message.payload;
 
                 const data = switch (payload) {
                     .raw => |raw_data| raw_data,
-                    .message => |message| blk: {
-                        const serial_message = try serial.serialise(message);
+                    .envelope => |envelope| blk: {
+                        const serial_message = try serial.serialise(envelope);
                         defer default.allocator.free(serial_message);
                         const hash_message = try hash.append_hash(serial_message);
                         std.log.info("send message with hash of: {}", .{utils.hex(&hash_message.hash)});
@@ -56,7 +56,7 @@ pub const ServerJob = union(enum) {
                         break :blk hash_message.slice;
                     },
                 };
-                switch (envelope.target) {
+                switch (outbound_message.target) {
                     .guid => |guid| {
                         // first find the ingoing or outgoing connection
                         var in_it = default.server.incoming_connections.keyIterator();
@@ -96,28 +96,28 @@ pub const ServerJob = union(enum) {
                     return;
                 }
 
-                var message = try serial.deserialise(communication.Message, &hash_slice.slice);
+                var envelope = try serial.deserialise(communication.Envelope, &hash_slice.slice);
 
-                if (id_.is_zero(message.target_id) or id_.is_equal(message.target_id, default.server.id)) {
+                if (id_.is_zero(envelope.target_id) or id_.is_equal(envelope.target_id, default.server.id)) {
                     std.log.info("message is for me", .{});
-                    try queue.enqueue(.{ .process_message = .{ .guid = inbound_message.guid, .message = message } });
+                    try queue.enqueue(.{ .process_message = .{ .guid = inbound_message.guid, .envelope = envelope } });
                 } else {
-                    try queue.enqueue(.{ .send_message = .{ .target = .{ .id = message.target_id }, .payload = .{ .raw = data_slice } } });
+                    try queue.enqueue(.{ .send_message = .{ .target = .{ .id = envelope.target_id }, .payload = .{ .raw = data_slice } } });
                 }
 
-                std.log.info("process forward message: {any}", .{message});
+                std.log.info("process forward message: {any}", .{envelope});
             },
-            .broadcast => |broadcast_message| {
-                std.log.info("broadcasting: {s}", .{broadcast_message});
+            .broadcast => |broadcast_envelope| {
+                std.log.info("broadcasting: {s}", .{broadcast_envelope});
                 var it = default.server.outgoing_connections.keyIterator();
                 while (it.next()) |conn| {
-                    try queue.enqueue(.{ .send_message = .{ .target = .{ .guid = conn.*.guid }, .payload = .{ .message = broadcast_message } } });
+                    try queue.enqueue(.{ .send_message = .{ .target = .{ .guid = conn.*.guid }, .payload = .{ .envelope = broadcast_envelope } } });
                 }
 
                 // Backward routing (might not be a good idea)
                 var it_back = default.server.incoming_connections.keyIterator();
                 while (it_back.next()) |conn| {
-                    try queue.enqueue(.{ .send_message = .{ .target = .{ .guid = conn.*.guid }, .payload = .{ .message = broadcast_message } } });
+                    try queue.enqueue(.{ .send_message = .{ .target = .{ .guid = conn.*.guid }, .payload = .{ .envelope = broadcast_envelope } } });
                 }
             },
             .connect => |address| {
@@ -128,12 +128,12 @@ pub const ServerJob = union(enum) {
                     }
                 }
 
-                std.log.info("Connect {s}, sending ping: {}", .{ address, utils.hex(&default.server.id) });
+                std.log.info("Connecting to {s}", .{address});
                 const out_connection = try default.server.connect_and_add(address);
                 std.log.info("Connected {s}", .{address});
                 const content = communication.Content{ .ping = .{ .source_id = default.server.id, .source_port = default.server.config.port } };
-                const message = communication.Message{ .source_id = default.server.id, .nonce = id_.get_guid(), .content = content };
-                try queue.enqueue(.{ .send_message = .{ .target = .{ .guid = out_connection.guid }, .payload = .{ .message = message } } });
+                const envelope = communication.Envelope{ .source_id = default.server.id, .nonce = id_.get_guid(), .content = content };
+                try queue.enqueue(.{ .send_message = .{ .target = .{ .guid = out_connection.guid }, .payload = .{ .envelope = envelope } } });
             },
             .callback => |callback| {
                 try callback();

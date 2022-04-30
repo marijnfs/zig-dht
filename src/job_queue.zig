@@ -30,11 +30,7 @@ pub fn JobQueue(comptime Job: type) type {
         pub fn job_loop(job_queue: *@This()) !void {
             while (true) {
                 if (job_queue.queue.pop()) |job| {
-                    // const stdout = std.io.getStdOut().writer();
-                    // nosuspend stdout.print("job: {any}\n", .{job}) catch unreachable;
-                    // const data = try std.fmt.allocPrint(default.allocator, "job: {any}\n", .{job});
-                    // c.print(data);
-                    std.log.info("Work: {}", .{job});
+                    std.log.debug("Work: {}", .{job});
                     job.work(job_queue) catch |e| {
                         std.log.info("Work Error: {}", .{e});
                     };

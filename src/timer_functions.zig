@@ -23,16 +23,16 @@ pub fn expand_connections() !void {
     while (it.next()) |conn| {
         std.log.info("conn: {}", .{conn.*.address});
         const content: communication.Content = .{ .get_known_ips = default.target_connections };
-        const message = communication.Message{ .target_id = std.mem.zeroes(ID), .source_id = default.server.id, .nonce = id_.get_guid(), .content = content };
+        const envelope = communication.Envelope{ .target_id = std.mem.zeroes(ID), .source_id = default.server.id, .nonce = id_.get_guid(), .content = content };
 
-        const envelope = communication.Envelope{
+        const outbound_message = communication.OutboundMessage{
             .target = .{ .guid = conn.*.guid },
             .payload = .{
-                .message = message,
+                .envelope = envelope,
             },
         };
 
-        try default.server.job_queue.enqueue(.{ .send_message = envelope });
+        try default.server.job_queue.enqueue(.{ .send_message = outbound_message });
     }
 
     const connections_to_add = default.target_connections - n_connections;
@@ -71,16 +71,16 @@ pub fn refresh_finger_table() !void {
     var it = routing.finger_table.keyIterator();
     while (it.next()) |id| {
         const content: communication.Content = .{ .find = .{ .id = id.*, .inclusive = 1 } };
-        const message = communication.Message{ .target_id = std.mem.zeroes(ID), .source_id = default.server.id, .nonce = id_.get_guid(), .content = content };
+        const envelope = communication.Envelope{ .target_id = std.mem.zeroes(ID), .source_id = default.server.id, .nonce = id_.get_guid(), .content = content };
 
-        const envelope = communication.Envelope{
+        const outbound_message = communication.OutboundMessage{
             .target = .{ .id = id.* },
             .payload = .{
-                .message = message,
+                .envelope = envelope,
             },
         };
 
-        try default.server.job_queue.enqueue(.{ .send_message = envelope });
+        try default.server.job_queue.enqueue(.{ .send_message = outbound_message });
     }
 }
 

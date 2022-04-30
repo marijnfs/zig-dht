@@ -209,13 +209,13 @@ pub fn move_char(drow: c_int, dcol: c_int) !void {
     const content = communication.Content{
         .broadcast = try serial.serialise(msg),
     };
-    const message = communication.Message{
+    const envelope = communication.Envelope{
         .source_id = default.server.id,
         .nonce = id_.get_guid(),
         .content = content,
     };
 
-    try default.server.job_queue.enqueue(.{ .broadcast = message });
+    try default.server.job_queue.enqueue(.{ .broadcast = envelope });
     try job_queue.enqueue(.{ .render = true });
 }
 

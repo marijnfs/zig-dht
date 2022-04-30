@@ -8,29 +8,49 @@ const Hash = index.Hash;
 const Blob = []const u8;
 const MaxBlobSize = 64 << 10; //64KB
 
+// Simple Persistent Blob Database
+// Blobs are stored under their Hash value
+// The hash is returned in the put(Blob) function, and can be used to get() the value back
+
 pub const Database = struct {
     store: std.AutoHashMap(ID, Blob),
     store_dir: std.fs.Dir,
 
-    pub fn create(path: []const u8) !*Database {
+    pub fn init(path: []const u8) !*Database {
         var db = try default.allocator.create(Database);
+        db.store = std.AutoHashMap(ID, Blob).init(default.allocator);
+        try db.open_directory(path);
 
-        try db.init(path);
         return db;
     }
 
-    pub fn init(db: *Database, path: []const u8) !void {
-        db.store = std.AutoHashMap(ID, Blob).init(default.allocator);
-
-        try db.open_directory(path);
+    pub fn deinit(db: *Database) void {
+        db.store.deinit();
+        db.store_dir.close();
     }
 
-    pub fn open_directory(db: *Database, path: []const u8) !void {
-        std.fs.cwd().makeDir(path) catch |err| switch (err) {
-            error.PathAlreadyExists => {},
-            else => return err,
-        };
-        db.store_dir = try std.fs.cwd().openDir(path, .{ .iterate = true, .no_follow = true });
+    pub fn put(db: *Database, data: Blob) !ID {
+        if (data.len > MaxBlobSize)
+            return error.BlobTooLarge;
+        const id = utils.calculate_hash(data);
+
+        try db.store.put(id, data);
+        try db.put_persistent(id, data);
+
+        return id;
+    }
+
+    pub fn get(db: *Database, id: ID) !Blob {
+        if (db.store.get(id)) |value| {
+            return value;
+        }
+
+        const data = try db.get_persistent(id);
+
+        //store back in fast storage
+        try db.store.put(id, data);
+
+        return data;
     }
 
     // explicitly allows to store non-matching id/data if you want
@@ -59,30 +79,6 @@ pub const Database = struct {
         try file.writer().writeAll(data);
     }
 
-    pub fn put(db: *Database, data: Blob) !ID {
-        if (data.len > MaxBlobSize)
-            return error.BlobTooLarge;
-        const id = utils.calculate_hash(data);
-
-        try db.store.put(id, data);
-        try db.put_persistent(id, data);
-
-        return id;
-    }
-
-    pub fn get(db: *Database, id: ID) !Blob {
-        if (db.store.get(id)) |value| {
-            return value;
-        }
-
-        const data = try db.get_persistent(id);
-
-        //store back in fast storage
-        try db.store.put(id, data);
-
-        return data;
-    }
-
     pub fn get_persistent(db: *Database, id: ID) !Blob {
         var path = try idToFilepath(id);
 
@@ -101,6 +97,14 @@ pub const Database = struct {
         return db.store.contains(id);
     }
 
+    pub fn open_directory(db: *Database, path: []const u8) !void {
+        std.fs.cwd().makeDir(path) catch |err| switch (err) {
+            error.PathAlreadyExists => {},
+            else => return err,
+        };
+        db.store_dir = try std.fs.cwd().openDir(path, .{ .iterate = true, .no_follow = true });
+    }
+
     fn idToFilepath(id: ID) ![]const u8 {
         var path = try std.fmt.allocPrint(default.allocator, "{s}/{s}", .{ utils.hex(id[0..1]), utils.hex(id[1..id.len]) });
         return path;
@@ -114,7 +118,9 @@ pub const Database = struct {
 };
 
 test "test basics" {
-    var database = try Database.create("test");
+    var database = try Database.init("test");
+    defer database.deinit();
+
     const data = "sdf";
     const data_id = try database.put(data);
 
