@@ -3,7 +3,6 @@
 const std = @import("std");
 const index = @import("index.zig");
 const default = index.default;
-const jobs = index.jobs;
 const routing = index.routing;
 const utils = index.utils;
 const communication = index.communication;
@@ -33,7 +32,7 @@ pub fn expand_connections() !void {
             },
         };
 
-        try jobs.enqueue(.{ .send_message = envelope });
+        try default.server.job_queue.enqueue(.{ .send_message = envelope });
     }
 
     const connections_to_add = default.target_connections - n_connections;
@@ -48,7 +47,7 @@ pub fn expand_connections() !void {
         const address = addresses_seen[s];
         if (default.server.is_connected_to(address))
             continue;
-        try jobs.enqueue(.{ .connect = address });
+        try default.server.job_queue.enqueue(.{ .connect = address });
     }
 }
 
@@ -64,7 +63,7 @@ pub fn sync_finger_table() !void {
             continue;
 
         std.log.info("connecting to finger: {} {}", .{ utils.hex(&id), node });
-        try jobs.enqueue(.{ .connect = address });
+        try default.server.job_queue.enqueue(.{ .connect = address });
     }
 }
 
@@ -81,7 +80,7 @@ pub fn refresh_finger_table() !void {
             },
         };
 
-        try jobs.enqueue(.{ .send_message = envelope });
+        try default.server.job_queue.enqueue(.{ .send_message = envelope });
     }
 }
 
@@ -102,7 +101,7 @@ pub fn count_connections() usize {
     var n_connections = default.server.outgoing_connections.count();
 
     // Also count the soon to be connections
-    for (jobs.job_queue.slice()) |job_ptr| {
+    for (default.server.job_queue.queue.slice()) |job_ptr| {
         if (job_ptr.* == .connect) {
             n_connections += 1;
         }

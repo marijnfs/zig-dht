@@ -2,7 +2,6 @@ const std = @import("std");
 
 const index = @import("index.zig");
 const default = index.default;
-const jobs = index.jobs;
 
 const Timer = struct { alarm: i64 = 0, callback: fn () anyerror!void, delay: i64 = 0 };
 
@@ -24,7 +23,7 @@ pub fn timer_thread_function() !void {
         if (queue.peek()) |timer_| {
             // std.log.info("time {} {}", .{ std.time.milliTimestamp(), timer_ });
             if (std.time.milliTimestamp() > timer_.alarm) {
-                try jobs.enqueue(.{ .callback = timer_.callback });
+                try default.server.job_queue.enqueue(.{ .callback = timer_.callback });
                 if (timer_.delay > 0) {
                     var new_timer = timer_;
                     new_timer.alarm += timer_.delay;

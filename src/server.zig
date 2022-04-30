@@ -8,6 +8,8 @@ const utils = index.utils;
 const id_ = index.id;
 
 const ID = index.ID;
+const JobQueue = index.JobQueue;
+const ServerJob = index.ServerJob;
 
 pub const Server = struct {
     const Config = struct {
@@ -23,6 +25,8 @@ pub const Server = struct {
     apparent_address: ?std.net.Address = null,
     incoming_connections: std.AutoHashMap(*connections.Connection, void),
     outgoing_connections: std.AutoHashMap(*connections.Connection, void),
+    job_queue: *JobQueue(ServerJob) = undefined,
+    frame: @Frame(accept_loop) = undefined,
 
     pub fn create(config: Config) !*Server {
         var server = try default.allocator.create(Server);
@@ -40,15 +44,19 @@ pub const Server = struct {
         const localhost = try net.Address.parseIp(server.config.name, server.config.port);
         try server.stream_server.listen(localhost);
 
+        server.job_queue = try JobQueue(ServerJob).init();
+
         std.log.info("my id: {any}", .{server.id});
     }
 
     pub fn start(server: *Server) !void {
         std.log.info("Starting Server", .{});
-        defer server.deinit();
-        try server.accept_loop();
+        server.job_queue.start_job_loop();
+        server.frame = async server.accept_loop();
+    }
 
-        std.log.info("Server Ended", .{});
+    pub fn wait(server: *Server) !void {
+        try await server.frame;
     }
 
     pub fn get_incoming_connection(server: *Server, guid: u64) !*connections.Connection {

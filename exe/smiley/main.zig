@@ -12,9 +12,11 @@ const routing = dht.routing;
 const staging = dht.staging;
 const db = dht.db;
 
-const c = dht.c;
+const c = @import("c.zig");
 const Server = dht.Server;
 const ID = dht.ID;
+const JobQueue = dht.JobQueue;
+const ServerJob = dht.ServerJob;
 
 // pub const log_level: std.log.Level = .warn;
 var log_file: std.fs.File = undefined;
@@ -68,7 +70,9 @@ pub fn main() !void {
     }
 
     try dht.init();
-    defer dht.deinit();
+
+    try c.init();
+    defer c.deinit();
 
     // Add default functions
     try timer.add_timer(10000, timer_functions.expand_connections, true);
@@ -91,11 +95,11 @@ pub fn main() !void {
         const port = try std.fmt.parseInt(u16, args[5], 0);
         const address = try std.net.Address.parseIp(args[4], port);
         try routing.add_address_seen(address);
-        try jobs.enqueue(.{ .connect = address });
+        try default.server.job_queue.enqueue(.{ .connect = address });
     }
 
     std.log.info("Spawning Server Thread..", .{});
-    var server_frame = async default.server.start();
+    try default.server.start();
     try routing.init_finger_table();
 
     std.log.info("Server ID: {Server ID}", .{utils.hex(&default.server.id)});
@@ -105,7 +109,5 @@ pub fn main() !void {
 
     std.log.info("Starting Job loop", .{});
 
-    try jobs.job_loop();
-    _ = server_frame;
-    unreachable;
+    try default.server.wait();
 }

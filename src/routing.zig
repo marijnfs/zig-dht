@@ -11,7 +11,7 @@ const Hash = index.Hash;
 pub var addresses_seen = std.AutoHashMap(Hash, std.net.Address).init(default.allocator);
 
 // Finger table
-const FINGERS = 1;
+const FINGERS = 8;
 
 const Finger = struct {
     id: ID = std.mem.zeroes(ID),

@@ -3,9 +3,9 @@
 const std = @import("std");
 const time = std.time;
 
-pub const jobs = @import("jobs.zig");
+pub const server_job = @import("server_job.zig");
+pub const job_queue = @import("job_queue.zig");
 pub const connections = @import("connections.zig");
-pub const AtomicQueue = @import("queue.zig").AtomicQueue;
 pub const serial = @import("serial.zig");
 pub const utils = @import("utils.zig");
 pub const routing = @import("routing.zig");
@@ -17,7 +17,6 @@ pub const timer_functions = @import("timer_functions.zig");
 pub const db = @import("db.zig");
 pub const hash = @import("hash.zig");
 pub const id = @import("id.zig");
-pub const c = @import("c.zig");
 pub const server = @import("server.zig");
 pub const bot = @import("bot.zig");
 
@@ -25,6 +24,9 @@ pub const bot = @import("bot.zig");
 pub const Server = server.Server;
 pub const ID = id.ID;
 pub const Hash = id.Hash;
+pub const JobQueue = job_queue.JobQueue;
+pub const AtomicQueue = @import("queue.zig").AtomicQueue;
+pub const ServerJob = server_job.ServerJob;
 
 pub var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
@@ -44,12 +46,6 @@ pub fn init() !void {
     try seed_rng();
     id.init();
     model.init();
-    jobs.init();
-    try c.init();
-}
-
-pub fn deinit() void {
-    c.deinit();
 }
 
 pub fn seed_rng() !void {

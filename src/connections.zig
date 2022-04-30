@@ -3,7 +3,6 @@ const net = std.net;
 
 const index = @import("index.zig");
 const default = index.default;
-const jobs = index.jobs;
 const utils = index.utils;
 
 const ID = index.ID;
@@ -69,7 +68,7 @@ pub const Connection = struct {
             var len = try connection.stream.read(&buf);
             std.log.info("read incoming backward len:{} ", .{buf.len});
 
-            try jobs.enqueue(.{ .inbound_message = .{ .guid = connection.guid, .content = try default.allocator.dupe(u8, buf[0..len]) } });
+            try default.server.job_queue.enqueue(.{ .inbound_message = .{ .guid = connection.guid, .content = try default.allocator.dupe(u8, buf[0..len]) } });
 
             if (len == 0) {
                 std.log.info("read 0 bytes, stopping {}", .{connection.address});

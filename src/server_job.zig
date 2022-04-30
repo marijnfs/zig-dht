@@ -16,55 +16,24 @@ const c = index.c;
 const hash = index.hash;
 const id_ = index.id;
 
-const AtomicQueue = index.AtomicQueue;
 const ID = index.ID;
 const Hash = index.Hash;
-
-pub var job_queue: AtomicQueue(*Job) = undefined;
-
-pub fn init() void {
-    job_queue = AtomicQueue(*Job).init(default.allocator);
-}
-
-pub fn enqueue(job: Job) !void {
-    const job_ptr = try default.allocator.create(Job);
-    job_ptr.* = job;
-    std.log.info("queuing job: {}\n", .{job});
-    try job_queue.push(job_ptr);
-}
-
-pub fn job_loop() !void {
-    while (true) {
-        if (job_queue.pop()) |job| {
-            std.log.info("Work: {}", .{job});
-            job.work() catch |e| {
-                std.log.info("Work Error: {}", .{e});
-            };
-            default.allocator.destroy(job);
-        } else {
-            //sleep
-            std.time.sleep(10 * std.time.ns_per_ms);
-        }
-    }
-}
+const JobQueue = index.JobQueue;
 
 // Jobs
 // Main application logic
-pub const Job = union(enum) {
-    render: bool,
+pub const ServerJob = union(enum) {
     broadcast: communication.Message,
     connect: std.net.Address,
     send_message: communication.Envelope,
     inbound_message: communication.InboundMessage,
-    print: []u8,
-    print32: []u32,
-    print_msg: struct { user: []u8, msg: []u32 },
     process_message: struct {
         guid: u64,
         message: communication.Message,
     },
     callback: fn () anyerror!void,
-    fn work(self: *Job) !void {
+
+    pub fn work(self: *ServerJob, queue: *JobQueue(ServerJob)) !void {
         switch (self.*) {
             .process_message => |guid_message| {
                 const message = guid_message.message;
@@ -131,9 +100,9 @@ pub const Job = union(enum) {
 
                 if (id_.is_zero(message.target_id) or id_.is_equal(message.target_id, default.server.id)) {
                     std.log.info("message is for me", .{});
-                    try jobs.enqueue(.{ .process_message = .{ .guid = inbound_message.guid, .message = message } });
+                    try queue.enqueue(.{ .process_message = .{ .guid = inbound_message.guid, .message = message } });
                 } else {
-                    try jobs.enqueue(.{ .send_message = .{ .target = .{ .id = message.target_id }, .payload = .{ .raw = data_slice } } });
+                    try queue.enqueue(.{ .send_message = .{ .target = .{ .id = message.target_id }, .payload = .{ .raw = data_slice } } });
                 }
 
                 std.log.info("process forward message: {any}", .{message});
@@ -142,13 +111,13 @@ pub const Job = union(enum) {
                 std.log.info("broadcasting: {s}", .{broadcast_message});
                 var it = default.server.outgoing_connections.keyIterator();
                 while (it.next()) |conn| {
-                    try jobs.enqueue(.{ .send_message = .{ .target = .{ .guid = conn.*.guid }, .payload = .{ .message = broadcast_message } } });
+                    try queue.enqueue(.{ .send_message = .{ .target = .{ .guid = conn.*.guid }, .payload = .{ .message = broadcast_message } } });
                 }
 
                 // Backward routing (might not be a good idea)
                 var it_back = default.server.incoming_connections.keyIterator();
                 while (it_back.next()) |conn| {
-                    try jobs.enqueue(.{ .send_message = .{ .target = .{ .guid = conn.*.guid }, .payload = .{ .message = broadcast_message } } });
+                    try queue.enqueue(.{ .send_message = .{ .target = .{ .guid = conn.*.guid }, .payload = .{ .message = broadcast_message } } });
                 }
             },
             .connect => |address| {
@@ -164,22 +133,10 @@ pub const Job = union(enum) {
                 std.log.info("Connected {s}", .{address});
                 const content = communication.Content{ .ping = .{ .source_id = default.server.id, .source_port = default.server.config.port } };
                 const message = communication.Message{ .source_id = default.server.id, .nonce = id_.get_guid(), .content = content };
-                try enqueue(.{ .send_message = .{ .target = .{ .guid = out_connection.guid }, .payload = .{ .message = message } } });
+                try queue.enqueue(.{ .send_message = .{ .target = .{ .guid = out_connection.guid }, .payload = .{ .message = message } } });
             },
             .callback => |callback| {
                 try callback();
-            },
-            .print => |buf| {
-                c.print32(std.mem.bytesAsSlice(u32, @alignCast(4, buf)));
-            },
-            .print32 => |print| {
-                c.print32(print);
-            },
-            .print_msg => |print_msg| {
-                c.print_msg(print_msg.user, print_msg.msg);
-            },
-            .render => {
-                c.render();
             },
         }
     }

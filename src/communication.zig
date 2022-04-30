@@ -2,7 +2,6 @@ const std = @import("std");
 
 const index = @import("index.zig");
 const default = index.default;
-const jobs = index.jobs;
 const communication = index.communication;
 const routing = index.routing;
 const utils = index.utils;
@@ -11,8 +10,6 @@ const id_ = index.id;
 const ID = index.ID;
 
 // Message contents
-
-const BroadcastMessage = struct { id: ID, username: []u8, msg: ?[]u32, char: u32, row: c_int = 0, col: c_int = 0 };
 
 pub const Content = union(enum) {
     ping: struct {
@@ -32,7 +29,7 @@ pub const Content = union(enum) {
         id: ID,
         address: ?std.net.Address,
     },
-    broadcast: BroadcastMessage,
+    broadcast: []u8,
 };
 
 pub const Message = struct {
@@ -79,17 +76,16 @@ pub fn process_message(message: Message, guid: u64) !void {
     switch (content) {
         .broadcast => |broadcast| {
             std.log.info("broadcast: '{s}'", .{broadcast});
-            try c.update_user(.{
-                .username = broadcast.username,
-                .row = broadcast.row,
-                .col = broadcast.col,
-                .char = broadcast.char,
-                .msg = broadcast.msg,
-                .id = broadcast.id,
-            });
-            try jobs.enqueue(.{ .broadcast = message });
-            // try jobs.enqueue(.{ .print_msg = .{ .user = broadcast.user, .msg = broadcast.msg } });
-            try jobs.enqueue(.{ .render = true });
+            // try c.update_user(.{
+            //     .username = broadcast.username,
+            //     .row = broadcast.row,
+            //     .col = broadcast.col,
+            //     .char = broadcast.char,
+            //     .msg = broadcast.msg,
+            //     .id = broadcast.id,
+            // });
+            // try default.server.job_queue.enqueue(.{ .broadcast = broadcast });
+            // try default.server.job_queue.enqueue(.{ .render = true });
         },
         .get_known_ips => |n_ips| {
             // sanity check n_ips
@@ -111,7 +107,7 @@ pub fn process_message(message: Message, guid: u64) !void {
             const return_content: Content = .{ .send_known_ips = ips };
             const envelope = try build_reply(return_content, message, guid);
 
-            try jobs.enqueue(.{ .send_message = envelope });
+            try default.server.job_queue.enqueue(.{ .send_message = envelope });
         },
         .find => |find| {
             // requester is trying to find a node closest to the search_id
@@ -136,10 +132,10 @@ pub fn process_message(message: Message, guid: u64) !void {
                 // Return our apparent address as closest
                 const return_content: Content = .{ .found = .{ .id = default.server.id, .address = default.server.apparent_address } };
                 const envelope = try build_reply(return_content, message, guid);
-                try jobs.enqueue(.{ .send_message = envelope });
+                try default.server.job_queue.enqueue(.{ .send_message = envelope });
             } else {
                 // Pass on message to closest connections
-                try jobs.enqueue(.{ .send_message = .{ .target = .{ .guid = closest_connection.?.guid }, .payload = .{ .message = message } } });
+                try default.server.job_queue.enqueue(.{ .send_message = .{ .target = .{ .guid = closest_connection.?.guid }, .payload = .{ .message = message } } });
             }
         },
         .ping => |ping| {
@@ -159,7 +155,7 @@ pub fn process_message(message: Message, guid: u64) !void {
 
             std.log.info("reply env: {any}", .{envelope.payload});
 
-            try jobs.enqueue(.{ .send_message = envelope });
+            try default.server.job_queue.enqueue(.{ .send_message = envelope });
         },
         .pong => |pong| {
             std.log.info("got pong: {}", .{pong});

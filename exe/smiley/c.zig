@@ -4,13 +4,14 @@ pub const c = @cImport({
 });
 
 const std = @import("std");
-const index = @import("index.zig");
-const default = index.default;
-const jobs = index.jobs;
-const communication = index.communication;
-const utils = index.utils;
-const id_ = index.id;
-const ID = index.ID;
+const dht = @import("dht");
+const default = dht.default;
+const communication = dht.communication;
+const utils = dht.utils;
+const id_ = dht.id;
+const serial = dht.serial;
+const ID = dht.ID;
+const JobQueue = dht.JobQueue;
 
 var input_thread: std.Thread = undefined;
 
@@ -31,7 +32,38 @@ const UserState = struct {
 
 var my_state: UserState = .{ .char = 0x0 };
 
+const DrawJob = union(enum) {
+    print: []u8,
+    print32: []u32,
+    print_msg: struct { user: []u8, msg: []u32 },
+    render: bool,
+
+    pub fn work(self: *DrawJob, _: *JobQueue(DrawJob)) !void {
+        switch (self.*) {
+            .print => |buf| {
+                print32(std.mem.bytesAsSlice(u32, @alignCast(4, buf)));
+            },
+            .print32 => |print| {
+                print32(print);
+            },
+            .print_msg => |msg| {
+                print_msg(msg.user, msg.msg);
+            },
+            .render => {
+                render();
+            },
+        }
+    }
+};
+
+var job_queue: *JobQueue(DrawJob) = undefined;
+
+const BroadcastMessage = struct { id: ID, username: []u8, msg: ?[]u32, char: u32, row: c_int = 0, col: c_int = 0 };
+
 pub fn init() !void {
+    job_queue = try JobQueue(DrawJob).init();
+    job_queue.start_job_loop();
+
     _ = c.setlocale(c.LC_ALL, "en_US.UTF-8");
     _ = c.setlocale(c.LC_CTYPE, "en_US.UTF-8");
 
@@ -56,7 +88,7 @@ pub fn init() !void {
 
 pub fn update_user(state: UserState) !void {
     try user_states.put(state.id, state);
-    try jobs.enqueue(.{ .render = true });
+    try job_queue.enqueue(.{ .render = true });
 }
 
 var user_states = std.AutoHashMap(ID, UserState).init(default.allocator);
@@ -160,7 +192,7 @@ pub fn move_char(drow: c_int, dcol: c_int) !void {
     my_state.id = default.server.id;
     try update_user(my_state);
 
-    const content = communication.Content{ .broadcast = .{
+    const msg = BroadcastMessage{
         .id = my_state.id,
         .char = my_state.char,
         .row = my_state.row,
@@ -173,11 +205,18 @@ pub fn move_char(drow: c_int, dcol: c_int) !void {
                 break :blk null;
             }
         },
-    } };
-    const message = communication.Message{ .source_id = default.server.id, .nonce = id_.get_guid(), .content = content };
+    };
+    const content = communication.Content{
+        .broadcast = try serial.serialise(msg),
+    };
+    const message = communication.Message{
+        .source_id = default.server.id,
+        .nonce = id_.get_guid(),
+        .content = content,
+    };
 
-    try jobs.enqueue(.{ .broadcast = message });
-    try jobs.enqueue(.{ .render = true });
+    try default.server.job_queue.enqueue(.{ .broadcast = message });
+    try job_queue.enqueue(.{ .render = true });
 }
 
 pub fn render() void {
@@ -215,13 +254,13 @@ pub fn read_loop() !void {
                     _ = c.notcurses_render(nc_context);
                 }
             } else if (input.id == c.NCKEY_ENTER) {
-                try jobs.enqueue(.{ .print32 = try default.allocator.dupe(u32, msg_buf.items) });
+                try job_queue.enqueue(.{ .print32 = try default.allocator.dupe(u32, msg_buf.items) });
                 my_state.msg = try default.allocator.dupe(u32, msg_buf.items);
                 try move_char(0, 0);
 
                 try msg_buf.resize(0);
 
-                try jobs.enqueue(.{ .render = true });
+                try job_queue.enqueue(.{ .render = true });
             } else if (input.id == c.NCKEY_UP) {
                 try move_char(-1, 0);
             } else if (input.id == c.NCKEY_DOWN) {
@@ -233,7 +272,7 @@ pub fn read_loop() !void {
             }
         } else {
             try msg_buf.append(ecg);
-            try jobs.enqueue(.{ .render = true });
+            try job_queue.enqueue(.{ .render = true });
         }
     }
 }
