@@ -38,6 +38,7 @@ pub const default = struct {
     // Main server instance
     pub var server: *Server = undefined;
     pub const target_connections = 8;
+    pub const n_fingers = 8;
 };
 
 pub fn init() !void {

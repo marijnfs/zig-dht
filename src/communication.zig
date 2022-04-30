@@ -69,7 +69,6 @@ fn build_reply(content: Content, message: Message, guid: u64) !Envelope {
 }
 
 /// >>>>>>>
-/// >>>>>>>
 pub fn process_message(message: Message, guid: u64) !void {
     const content = message.content;
 

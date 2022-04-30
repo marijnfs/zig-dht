@@ -10,9 +10,6 @@ const Hash = index.Hash;
 
 pub var addresses_seen = std.AutoHashMap(Hash, std.net.Address).init(default.allocator);
 
-// Finger table
-const FINGERS = 8;
-
 const Finger = struct {
     id: ID = std.mem.zeroes(ID),
     address: std.net.Address = undefined,
@@ -23,7 +20,7 @@ pub var finger_table = std.AutoHashMap(ID, Finger).init(default.allocator);
 pub fn init_finger_table() !void {
     var i: usize = 0;
     std.log.info("finger table init, id is: {}", .{utils.hex(&default.server.id)});
-    while (i < FINGERS) : (i += 1) {
+    while (i < default.n_fingers) : (i += 1) {
         const id = id_.xor_bitpos(default.server.id, i);
         if (!finger_table.contains(id))
             try finger_table.put(id, .{});
