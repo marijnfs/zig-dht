@@ -1,6 +1,7 @@
 pub const io_mode = .evented; // use event loop
 
 const std = @import("std");
+const net = std.net;
 
 const dht = @import("dht");
 const default = dht.default;
@@ -17,6 +18,7 @@ const Server = dht.Server;
 const ID = dht.ID;
 const JobQueue = dht.JobQueue;
 const ServerJob = dht.ServerJob;
+const UDPSocket = dht.UDPSocket;
 
 // pub const log_level: std.log.Level = .warn;
 var log_file: std.fs.File = undefined;
@@ -58,6 +60,28 @@ pub fn log(
 }
 
 pub fn main() !void {
+    {
+        const addr = net.Address.initIp4([_]u8{ 0, 0, 0, 0 }, 9040);
+        var socket = try UDPSocket.init(addr);
+        defer socket.deinit();
+        try socket.bind();
+
+        const other_addr = net.Address.initIp4([_]u8{ 0, 0, 0, 0 }, 9041);
+        var other_socket = try UDPSocket.init(other_addr);
+        try other_socket.bind();
+        defer other_socket.deinit();
+
+        var buf: []const u8 = "blaa";
+        try socket.sendTo(other_addr, buf);
+
+        std.log.info("{}", .{socket.fd});
+
+        std.log.info("{}", .{other_addr});
+        std.log.info("{}", .{other_socket.fd});
+
+        var recv = try other_socket.recvFrom();
+        std.log.info("{}", .{recv});
+    }
     log_file = try std.fs.cwd().createFile("log.txt", .{ .intended_io_mode = .blocking });
 
     var args = try std.process.argsAlloc(default.allocator);

@@ -86,6 +86,10 @@ pub fn init() !void {
     input_thread = try std.Thread.spawn(.{}, read_loop, .{});
 }
 
+pub fn deinit() void {
+    _ = c.notcurses_stop(nc_context);
+}
+
 pub fn update_user(state: UserState) !void {
     try user_states.put(state.id, state);
     try job_queue.enqueue(.{ .render = true });
@@ -275,8 +279,4 @@ pub fn read_loop() !void {
             try job_queue.enqueue(.{ .render = true });
         }
     }
-}
-
-pub fn deinit() void {
-    _ = c.notcurses_stop(nc_context);
 }
