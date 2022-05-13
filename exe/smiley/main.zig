@@ -73,14 +73,16 @@ pub fn main() !void {
 
         var buf: []const u8 = "blaa";
         try socket.sendTo(other_addr, buf);
+        std.log.info("s1{}", .{socket});
 
         std.log.info("{}", .{socket.fd});
 
-        std.log.info("{}", .{other_addr});
+        std.log.info("s2{}", .{other_addr});
         std.log.info("{}", .{other_socket.fd});
 
         var recv = try other_socket.recvFrom();
-        std.log.info("{}", .{recv});
+        std.log.info("got on s2 from s1{}", .{recv});
+        return;
     }
     log_file = try std.fs.cwd().createFile("log.txt", .{ .intended_io_mode = .blocking });
 
