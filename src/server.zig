@@ -25,7 +25,7 @@ pub const Server = struct {
     apparent_address: ?std.net.Address = null,
     incoming_connections: std.AutoHashMap(*connections.Connection, void),
     outgoing_connections: std.AutoHashMap(*connections.Connection, void),
-    job_queue: *JobQueue(ServerJob) = undefined,
+    job_queue: *JobQueue(ServerJob, void) = undefined,
     frame: @Frame(accept_loop) = undefined,
 
     pub fn create(config: Config) !*Server {
@@ -44,7 +44,7 @@ pub const Server = struct {
         const localhost = try net.Address.parseIp(server.config.name, server.config.port);
         try server.stream_server.listen(localhost);
 
-        server.job_queue = try JobQueue(ServerJob).init();
+        server.job_queue = try JobQueue(ServerJob, void).init({});
 
         std.log.info("my id: {any}", .{server.id});
     }

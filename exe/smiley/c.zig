@@ -38,7 +38,7 @@ const DrawJob = union(enum) {
     print_msg: struct { user: []u8, msg: []u32 },
     render: bool,
 
-    pub fn work(self: *DrawJob, _: *JobQueue(DrawJob)) !void {
+    pub fn work(self: *DrawJob, _: *JobQueue(DrawJob, void), _: void) !void {
         switch (self.*) {
             .print => |buf| {
                 print32(std.mem.bytesAsSlice(u32, @alignCast(4, buf)));
@@ -56,12 +56,12 @@ const DrawJob = union(enum) {
     }
 };
 
-var job_queue: *JobQueue(DrawJob) = undefined;
+var job_queue: *JobQueue(DrawJob, void) = undefined;
 
 const BroadcastMessage = struct { id: ID, username: []u8, msg: ?[]u32, char: u32, row: c_int = 0, col: c_int = 0 };
 
 pub fn init() !void {
-    job_queue = try JobQueue(DrawJob).init();
+    job_queue = try JobQueue(DrawJob, void).init({});
     job_queue.start_job_loop();
 
     _ = c.setlocale(c.LC_ALL, "en_US.UTF-8");

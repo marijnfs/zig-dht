@@ -33,7 +33,7 @@ pub const ServerJob = union(enum) {
     },
     callback: fn () anyerror!void,
 
-    pub fn work(self: *ServerJob, queue: *JobQueue(ServerJob)) !void {
+    pub fn work(self: *ServerJob, queue: *JobQueue(ServerJob, void), _: void) !void {
         switch (self.*) {
             .process_message => |guid_message| {
                 const envelope = guid_message.envelope;
@@ -84,6 +84,7 @@ pub const ServerJob = union(enum) {
                             std.log.info("Couldn't route {}", .{utils.hex(&id)});
                         }
                     },
+                    else => {},
                 }
             },
             .inbound_message => |inbound_message| {

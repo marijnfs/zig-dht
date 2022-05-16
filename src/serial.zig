@@ -6,7 +6,7 @@ const utils = index.utils;
 
 const ID = index.ID;
 
-pub fn deserialise(comptime T: type, msg_ptr: *[]u8) !T {
+pub fn deserialise(comptime T: type, msg_ptr: *[]const u8) !T {
     const msg = msg_ptr.*;
     var t: T = undefined;
     const info = @typeInfo(T);
@@ -38,14 +38,15 @@ pub fn deserialise(comptime T: type, msg_ptr: *[]u8) !T {
                 if (len * @sizeOf(C) > msg.len)
                     return error.FailedToDeserialise;
 
-                if (comptime std.meta.sentinel(T) == null) {
-                    t = try default.allocator.alloc(C, len);
-                } else {
-                    t = try default.allocator.allocSentinel(C, len, 0);
-                }
-                for (t) |*e| {
+                var tmp = if (comptime std.meta.sentinel(T) == null)
+                    try default.allocator.alloc(C, len)
+                else
+                    try default.allocator.allocSentinel(C, len, 0);
+
+                for (tmp) |*e| {
                     e.* = try deserialise(C, msg_ptr);
                 }
+                t = tmp;
             } else {
                 @compileError("Expected to serialise slice");
             }
@@ -96,7 +97,7 @@ pub fn deserialise(comptime T: type, msg_ptr: *[]u8) !T {
     return t;
 }
 
-pub fn serialise(t: anytype) ![]u8 {
+pub fn serialise(t: anytype) ![]const u8 {
     var buf = std.ArrayList(u8).init(default.allocator);
     try serialise_to_buffer(t, &buf);
     return buf.toOwnedSlice();
@@ -210,12 +211,9 @@ test "union" {
 }
 
 test "message" {
-    const return_message = communication.Message{ .target_id = utils.rand_id(), .content = .{ .pong = .{ .source_id = utils.rand_id(), .apparent_ip = undefined } } };
-
     const envelope = communication.Envelope{
-        .target = .{ .guid = 52 },
-        .payload = .{
-            .message = return_message,
+        .content = .{
+            .broadcast = "test",
         },
     };
 

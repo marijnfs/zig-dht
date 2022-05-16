@@ -7,9 +7,9 @@ const id_ = index.id;
 
 const Hash = index.Hash;
 
-const RetType = struct { hash: Hash, slice: []u8 };
+const RetType = struct { hash: Hash, slice: []const u8 };
 
-pub fn calculate_and_check_hash(data_slice: []u8) !RetType {
+pub fn calculate_and_check_hash(data_slice: []const u8) !RetType {
     if (data_slice.len < @sizeOf(Hash)) {
         std.log.info("message dropped", .{});
         return error.TooShort;
@@ -25,7 +25,7 @@ pub fn calculate_and_check_hash(data_slice: []u8) !RetType {
     return RetType{ .hash = calculated_hash, .slice = body_slice };
 }
 
-pub fn append_hash(data_slice: []u8) !RetType {
+pub fn append_hash(data_slice: []const u8) !RetType {
     const hash = utils.calculate_hash(data_slice);
 
     const hash_message = try default.allocator.alloc(u8, hash.len + data_slice.len);

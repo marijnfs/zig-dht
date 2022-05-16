@@ -60,30 +60,6 @@ pub fn log(
 }
 
 pub fn main() !void {
-    {
-        const addr = net.Address.initIp4([_]u8{ 0, 0, 0, 0 }, 9040);
-        var socket = try UDPSocket.init(addr);
-        defer socket.deinit();
-        try socket.bind();
-
-        const other_addr = net.Address.initIp4([_]u8{ 0, 0, 0, 0 }, 9041);
-        var other_socket = try UDPSocket.init(other_addr);
-        try other_socket.bind();
-        defer other_socket.deinit();
-
-        var buf: []const u8 = "blaa";
-        try socket.sendTo(other_addr, buf);
-        std.log.info("s1{}", .{socket});
-
-        std.log.info("{}", .{socket.fd});
-
-        std.log.info("s2{}", .{other_addr});
-        std.log.info("{}", .{other_socket.fd});
-
-        var recv = try other_socket.recvFrom();
-        std.log.info("got on s2 from s1{}", .{recv});
-        return;
-    }
     log_file = try std.fs.cwd().createFile("log.txt", .{ .intended_io_mode = .blocking });
 
     var args = try std.process.argsAlloc(default.allocator);
@@ -96,7 +72,6 @@ pub fn main() !void {
     }
 
     try dht.init();
-
     try c.init();
     defer c.deinit();
 

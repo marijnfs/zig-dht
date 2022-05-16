@@ -4,15 +4,17 @@ const std = @import("std");
 const index = @import("index.zig");
 const default = index.default;
 
-pub fn JobQueue(comptime Job: type) type {
+pub fn JobQueue(comptime Job: type, comptime Context: type) type {
     return struct {
         queue: AtomicQueue(*Job),
 
         frame: @Frame(job_loop) = undefined,
+        context: Context,
 
-        pub fn init() !*@This() {
+        pub fn init(context: Context) !*@This() {
             var job_queue = try default.allocator.create(@This());
             job_queue.queue = AtomicQueue(*Job).init(default.allocator);
+            job_queue.context = context;
             return job_queue;
         }
 
@@ -31,7 +33,7 @@ pub fn JobQueue(comptime Job: type) type {
             while (true) {
                 if (job_queue.queue.pop()) |job| {
                     std.log.debug("Work: {}", .{job});
-                    job.work(job_queue) catch |e| {
+                    job.work(job_queue, job_queue.context) catch |e| {
                         std.log.info("Work Error: {}", .{e});
                     };
                     default.allocator.destroy(job);

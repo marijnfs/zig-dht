@@ -33,7 +33,7 @@ pub const Connection = struct {
         connection.state = .Connected;
     }
 
-    pub fn write(connection: *Connection, buf: []u8) !void {
+    pub fn write(connection: *Connection, buf: []const u8) !void {
         std.log.info("write n:{}", .{buf.len});
 
         errdefer connection.state = .Disconnected;

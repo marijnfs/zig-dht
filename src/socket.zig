@@ -6,6 +6,11 @@ const index = @import("index.zig");
 const default = index.default;
 const READ_BUF = 64 << 20;
 
+pub const UDPIncoming = struct {
+    buf: []const u8,
+    from: net.Address,
+};
+
 pub const UDPSocket = struct {
     fd: os.socket_t,
     address: net.Address,
@@ -32,11 +37,6 @@ pub const UDPSocket = struct {
             _ = try os.sendto(socket.fd, buf, os.MSG.NOSIGNAL, &address.any, address.getOsSockLen());
         }
     }
-
-    const UDPIncoming = struct {
-        buf: []const u8,
-        from: net.Address,
-    };
 
     pub fn bind(socket: *UDPSocket) !void {
         try os.bind(socket.fd, &socket.address.any, socket.address.getOsSockLen());

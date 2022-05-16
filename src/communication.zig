@@ -29,7 +29,7 @@ pub const Content = union(enum) {
         id: ID,
         address: ?std.net.Address,
     },
-    broadcast: []u8,
+    broadcast: []const u8,
 };
 
 pub const Envelope = struct {
@@ -44,9 +44,10 @@ pub const OutboundMessage = struct {
     target: union(enum) {
         guid: u64,
         id: ID,
+        address: std.net.Address,
     }, //target output node
     payload: union(enum) {
-        raw: []u8,
+        raw: []const u8,
         envelope: Envelope,
     },
 };
