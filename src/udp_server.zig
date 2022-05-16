@@ -53,17 +53,23 @@ pub const UDPServer = struct {
         default.allocator.destroy(server);
     }
 
-    pub fn start(server: *UDPServer) void {
+    pub fn start(server: *UDPServer) !void {
         std.log.info("Starting UDP Server", .{});
 
+        try server.socket.bind();
         server.job_queue.start_job_loop();
-
         server.frame = async server.accept_loop();
+    }
+
+    pub fn wait(server: *UDPServer) !void {
+        try await server.frame;
     }
 
     fn accept_loop(server: *UDPServer) !void {
         while (true) {
+            std.log.info("Getting", .{});
             const msg = try server.socket.recvFrom();
+            std.log.info("got msg:{s}", .{msg.buf});
 
             try routing.add_address_seen(msg.from);
 

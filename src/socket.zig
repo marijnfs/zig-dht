@@ -18,7 +18,8 @@ pub const UDPSocket = struct {
     pub fn init(address: net.Address) !*UDPSocket {
         var socket = try default.allocator.create(UDPSocket);
 
-        const sock_flags = os.SOCK.DGRAM | os.SOCK.CLOEXEC;
+        const sock_flags = os.SOCK.DGRAM | os.SOCK.CLOEXEC | os.SOCK.NONBLOCK;
+
         socket.fd = try os.socket(address.any.family, sock_flags, os.IPPROTO.UDP);
         socket.address = address;
 

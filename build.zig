@@ -15,28 +15,46 @@ pub fn build(b: *std.build.Builder) void {
     autogen_step.addArg("");
     autogen_step.cwd = "./build-notcurses.sh";
 
-    const exe = b.addExecutable("zig-dht", "exe/smiley/main.zig");
-    exe.addLibPath("/usr/lib/x86_64-linux-gnu");
-    exe.addLibPath("/usr/lib64");
-    exe.addPackagePath("dht", "src/index.zig");
-    exe.setTarget(target);
-    exe.setBuildMode(mode);
-    exe.linkLibC();
-    exe.defineCMacro("_XOPEN_SOURCE", "1");
-    exe.linkSystemLibrary("notcurses");
-    exe.linkSystemLibrary("notcurses-core");
-    exe.addIncludeDir("/usr/local/include");
+    {
+        const exe = b.addExecutable("zig-dht", "exe/smiley/main.zig");
+        exe.addLibPath("/usr/lib/x86_64-linux-gnu");
+        exe.addLibPath("/usr/lib64");
+        exe.addPackagePath("dht", "src/index.zig");
+        exe.setTarget(target);
+        exe.setBuildMode(mode);
+        exe.linkLibC();
+        exe.defineCMacro("_XOPEN_SOURCE", "1");
+        exe.linkSystemLibrary("notcurses");
+        exe.linkSystemLibrary("notcurses-core");
+        exe.addIncludeDir("/usr/local/include");
+        exe.install();
 
-    exe.install();
-
-    const run_cmd = exe.run();
-    run_cmd.step.dependOn(b.getInstallStep());
-    if (b.args) |args| {
-        run_cmd.addArgs(args);
+        const run_cmd = exe.run();
+        run_cmd.step.dependOn(b.getInstallStep());
+        if (b.args) |args| {
+            run_cmd.addArgs(args);
+        }
     }
+    {
+        const exe = b.addExecutable("udptest", "exe/udptest/main.zig");
+        exe.addLibPath("/usr/lib/x86_64-linux-gnu");
+        exe.addLibPath("/usr/lib64");
+        exe.addPackagePath("dht", "src/index.zig");
+        exe.setTarget(target);
+        exe.setBuildMode(mode);
+        exe.linkLibC();
+        exe.defineCMacro("_XOPEN_SOURCE", "1");
+        exe.linkSystemLibrary("notcurses");
+        exe.linkSystemLibrary("notcurses-core");
+        exe.addIncludeDir("/usr/local/include");
+        exe.install();
 
-    const run_step = b.step("run", "Run the app");
-    run_step.dependOn(&run_cmd.step);
+        const run_cmd = exe.run();
+        run_cmd.step.dependOn(b.getInstallStep());
+        if (b.args) |args| {
+            run_cmd.addArgs(args);
+        }
+    }
 
     const nc_step = b.step("notcurses", "Build notcurses");
     nc_step.dependOn(&autogen_step.step);
