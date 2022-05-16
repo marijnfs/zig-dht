@@ -20,6 +20,8 @@ pub const id = @import("id.zig");
 pub const server = @import("server.zig");
 pub const bot = @import("bot.zig");
 pub const socket = @import("socket.zig");
+pub const communication_udp = @import("communication_udp.zig");
+pub const udp_server = @import("udp_server.zig");
 
 // Quick Definitions
 pub const Server = server.Server;

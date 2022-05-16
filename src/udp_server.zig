@@ -4,11 +4,12 @@ const time = std.time;
 
 const index = @import("index.zig");
 const default = index.default;
-const communication = index.communication;
+const communication = index.communication_udp;
 const utils = index.utils;
 const serial = index.serial;
 const hash = index.hash;
 const model = index.model;
+const routing = index.routing;
 
 const UDPSocket = index.UDPSocket;
 const Hash = index.Hash;
@@ -17,7 +18,7 @@ const ID = index.ID;
 
 const JobQueue = index.JobQueue(ServerJob, *UDPServer);
 
-const UDPServer = struct {
+pub const UDPServer = struct {
     const Record = struct {
         address: net.Address = undefined,
         id: ID = std.mem.zeroes(ID),
@@ -29,12 +30,13 @@ const UDPServer = struct {
     ip_index: std.StringHashMap(*Record),
     id_index: std.AutoHashMap(ID, *Record),
     address: net.Address,
+    apparent_address: ?net.Address = null,
     socket: *UDPSocket,
     job_queue: *JobQueue,
     id: ID,
     frame: @Frame(accept_loop) = undefined,
 
-    fn init(address: net.Address) !*UDPServer {
+    pub fn init(address: net.Address) !*UDPServer {
         var server = try default.allocator.create(UDPServer);
         server.records = std.ArrayList(*Record).init(default.allocator);
         server.ip_index = std.StringHashMap(*Record).init(default.allocator);
@@ -46,12 +48,12 @@ const UDPServer = struct {
         return server;
     }
 
-    fn deinit(server: *UDPServer) void {
+    pub fn deinit(server: *UDPServer) void {
         server.socket.deinit();
         default.allocator.destroy(server);
     }
 
-    fn start(server: *UDPServer) void {
+    pub fn start(server: *UDPServer) void {
         std.log.info("Starting UDP Server", .{});
 
         server.job_queue.start_job_loop();
@@ -62,6 +64,8 @@ const UDPServer = struct {
     fn accept_loop(server: *UDPServer) !void {
         while (true) {
             const msg = try server.socket.recvFrom();
+
+            try routing.add_address_seen(msg.from);
 
             // Update / Add record
             const ip_string = try std.fmt.allocPrint(default.allocator, "{}", .{msg.from});
@@ -86,7 +90,7 @@ const UDPServer = struct {
         }
     }
 
-    fn send(server: *UDPServer, id: ID, buf: []const u8) !void {
+    pub fn send(server: *UDPServer, id: ID, buf: []const u8) !void {
         if (server.id_index.get(id)) |record| {
             server.socket.sendTo(record.address, buf);
         } else {
@@ -94,7 +98,7 @@ const UDPServer = struct {
         }
     }
 
-    fn get_closest_record(server: *UDPServer, id: ID) ?Record {
+    pub fn get_closest_record(server: *UDPServer, id: ID) ?Record {
         var best_record: ?Record = null;
         var lowest_dist = std.mem.zeroes(ID);
 
@@ -110,6 +114,36 @@ const UDPServer = struct {
         }
         return best_record;
     }
+
+    pub fn get_record_by_ip(server: *UDPServer, address: std.net.Address) ?Record {
+        const ip_string = try std.fmt.allocPrint(default.allocator, "{}", .{address});
+        return server.ip_index.get(ip_string);
+    }
+
+    pub fn get_record_by_id(server: *UDPServer, id: ID) ?Record {
+        return server.id_index.get(id);
+    }
+
+    pub fn update_ip_id_pair(server: *UDPServer, addr: std.net.Address, id: ID) !void {
+        const ip_string = try std.fmt.allocPrint(default.allocator, "{}", .{addr});
+
+        if (server.ip_index.get(ip_string)) |record| {
+            record.id = id;
+
+            try server.id_index.put(id, record);
+            try server.ip_index.put(ip_string, record);
+        } else {
+            // create new record
+            var record = try default.allocator.create(Record);
+            record.id = id;
+            record.address = addr;
+            record.last_connect = time.milliTimestamp();
+            try server.records.append(record);
+
+            try server.id_index.put(id, record);
+            try server.ip_index.put(ip_string, record);
+        }
+    }
 };
 
 // Jobs
@@ -118,7 +152,7 @@ pub const ServerJob = union(enum) {
     connect: std.net.Address,
     send_message: communication.OutboundMessage,
     inbound_message: index.socket.UDPIncoming,
-    process_message: communication.Envelope,
+    process_message: communication.InboundMessage,
     broadcast: communication.Envelope,
     callback: fn () anyerror!void,
 
@@ -132,13 +166,13 @@ pub const ServerJob = union(enum) {
                     }
                 }
 
+                // Create ping request
                 const content = communication.Content{ .ping = .{ .source_id = server.id, .source_port = server.address.getPort() } };
                 const envelope = communication.Envelope{ .source_id = server.id, .nonce = id_.get_guid(), .content = content };
                 try queue.enqueue(.{ .send_message = .{ .target = .{ .address = address }, .payload = .{ .envelope = envelope } } });
             },
-            .process_message => |envelope| {
-                const guid = 0;
-                try communication.process_message(envelope, guid);
+            .process_message => |inbound| {
+                try communication.process_message(inbound.envelope, inbound.address, server);
             },
             // Multi function send message,
             // both for incoming and outgoing messages
@@ -161,20 +195,19 @@ pub const ServerJob = union(enum) {
                         try server.socket.sendTo(address, data);
                     },
                     .id => |id| {
-                        if (server.id_index.get(id)) |record| { //direct match
+                        //direct match
+                        if (server.id_index.get(id)) |record| {
                             try server.socket.sendTo(record.address, data);
                             return;
                         }
 
+                        // routing
                         if (server.get_closest_record(id)) |record| {
                             try server.socket.sendTo(record.address, data);
                         } else {
                             //failed to find any valid record
                             std.log.info("Failed to find any record for id {}", .{utils.hex(&id)});
                         }
-                    },
-                    else => {
-                        unreachable;
                     },
                 }
             },
@@ -192,7 +225,7 @@ pub const ServerJob = union(enum) {
 
                 if (id_.is_zero(envelope.target_id) or id_.is_equal(envelope.target_id, default.server.id)) {
                     std.log.info("message is for me", .{});
-                    try queue.enqueue(.{ .process_message = envelope });
+                    try queue.enqueue(.{ .process_message = .{ .envelope = envelope, .address = inbound_message.from } });
                 } else {
                     try queue.enqueue(.{ .send_message = .{ .target = .{ .id = envelope.target_id }, .payload = .{ .raw = data_slice } } });
                 }
