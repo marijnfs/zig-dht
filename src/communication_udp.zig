@@ -160,6 +160,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
             var our_ip = pong.apparent_ip;
             our_ip.setPort(server.address.getPort()); // set the port so the address becomes our likely external connection ip
             server.apparent_address = our_ip;
+            std.log.info("apparent_address: {}", .{server.apparent_address});
         },
         .found => |found| {
             std.log.info("found result: {s}", .{found});

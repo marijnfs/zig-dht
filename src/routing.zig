@@ -20,9 +20,11 @@ pub const RoutingTable = struct {
 
     pub fn init(id: ID, n_fingers: usize) !*RoutingTable {
         var table = try default.allocator.create(RoutingTable);
-        table.id = id;
-        table.addresses_seen = std.AutoHashMap(Hash, std.net.Address).init(default.allocator);
-        table.finger_table = std.AutoHashMap(ID, Finger).init(default.allocator);
+        table.* = .{
+            .id = id,
+            .addresses_seen = std.AutoHashMap(Hash, std.net.Address).init(default.allocator),
+            .finger_table = std.AutoHashMap(ID, Finger).init(default.allocator),
+        };
 
         try table.init_finger_table(n_fingers);
         return table;

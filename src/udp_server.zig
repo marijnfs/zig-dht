@@ -40,14 +40,16 @@ pub const UDPServer = struct {
 
     pub fn init(address: net.Address) !*UDPServer {
         var server = try default.allocator.create(UDPServer);
-        server.records = std.ArrayList(*Record).init(default.allocator);
-        server.ip_index = std.StringHashMap(*Record).init(default.allocator);
-        server.id_index = std.AutoHashMap(ID, *Record).init(default.allocator);
-        server.address = address;
-        server.socket = try UDPSocket.init(address);
-        server.job_queue = try JobQueue.init(server);
-        server.id = id_.rand_id();
-        server.routing = try index.routing.RoutingTable.init(server.id, default.n_fingers);
+        server.* = .{
+            .records = std.ArrayList(*Record).init(default.allocator),
+            .ip_index = std.StringHashMap(*Record).init(default.allocator),
+            .id_index = std.AutoHashMap(ID, *Record).init(default.allocator),
+            .address = address,
+            .socket = try UDPSocket.init(address),
+            .job_queue = try JobQueue.init(server),
+            .id = id_.rand_id(),
+            .routing = try index.routing.RoutingTable.init(server.id, default.n_fingers),
+        };
         return server;
     }
 
@@ -83,13 +85,15 @@ pub const UDPServer = struct {
                 record.last_connect = time.milliTimestamp();
                 if (record.red_flags > 1) //drop message
                 {
-                    std.log.info("Dropping red-flag message", .{});
+                    std.log.info("Dropping red-flag message, flags: {}", .{record.red_flags});
                     continue;
                 }
             } else {
                 var record = try default.allocator.create(Record);
-                record.address = msg.from;
-                record.last_connect = time.milliTimestamp();
+                record.* = .{
+                    .address = msg.from,
+                    .last_connect = time.milliTimestamp(),
+                };
 
                 try server.records.append(record);
                 try server.ip_index.put(ip_string, record);
@@ -144,9 +148,11 @@ pub const UDPServer = struct {
         } else {
             // create new record
             var record = try default.allocator.create(Record);
-            record.id = id;
-            record.address = addr;
-            record.last_connect = time.milliTimestamp();
+            record.* = .{
+                .id = id,
+                .address = addr,
+                .last_connect = time.milliTimestamp(),
+            };
             try server.records.append(record);
 
             try server.id_index.put(id, record);

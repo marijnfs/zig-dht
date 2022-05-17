@@ -18,7 +18,9 @@ pub const Database = struct {
 
     pub fn init(path: []const u8) !*Database {
         var db = try default.allocator.create(Database);
-        db.store = std.AutoHashMap(ID, Blob).init(default.allocator);
+        db.* = .{
+            .store = std.AutoHashMap(ID, Blob).init(default.allocator),
+        };
         try db.open_directory(path);
 
         return db;

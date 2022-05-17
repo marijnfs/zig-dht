@@ -13,8 +13,10 @@ pub fn JobQueue(comptime Job: type, comptime Context: type) type {
 
         pub fn init(context: Context) !*@This() {
             var job_queue = try default.allocator.create(@This());
-            job_queue.queue = AtomicQueue(*Job).init(default.allocator);
-            job_queue.context = context;
+            job_queue.* = .{
+                .queue = AtomicQueue(*Job).init(default.allocator),
+                .context = context,
+            };
             return job_queue;
         }
 

@@ -15,13 +15,15 @@ pub const TimerThread = struct {
     queue: std.PriorityQueue(Timer, void, compare_timer),
 
     // var timer_thread: std.Thread = undefined;
-    timer_frame: @Frame(timer_thread_function),
+    timer_frame: @Frame(timer_thread_function) = undefined,
     work_queue: *index.JobQueue(ServerJob, *index.UDPServer),
 
     pub fn init(work_queue: *index.JobQueue(ServerJob, *index.UDPServer)) !*TimerThread {
         var timer_thread = try default.allocator.create(TimerThread);
-        timer_thread.queue = std.PriorityQueue(Timer, void, compare_timer).init(default.allocator, .{});
-        timer_thread.work_queue = work_queue;
+        timer_thread.* = .{
+            .queue = std.PriorityQueue(Timer, void, compare_timer).init(default.allocator, .{}),
+            .work_queue = work_queue,
+        };
         return timer_thread;
     }
 
