@@ -103,8 +103,5 @@ pub fn main() !void {
     // start timers
     try timer.start_timer_thread();
 
-    std.log.info("Starting server", .{});
-    try server.start();
-
     try server.wait();
 }

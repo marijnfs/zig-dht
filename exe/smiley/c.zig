@@ -229,8 +229,6 @@ pub fn render() void {
     c.ncplane_home(nc_line_plane);
     try print_bottomline();
 
-    _ = c.notcurses_render(nc_context);
-
     // Draw main plane
     c.ncplane_erase(nc_plane);
     draw_character(nc_plane, my_state.char, my_state.msg, my_state.row, my_state.col);

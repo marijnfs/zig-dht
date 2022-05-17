@@ -50,8 +50,8 @@ pub fn AtomicQueue(comptime T: type) type {
         }
 
         pub fn empty(self: *Self) bool {
-            const held = self.mutex.acquire();
-            defer held.release();
+            self.mutex.lock();
+            defer self.mutex.unlock();
 
             return self._empty();
         }
@@ -61,8 +61,8 @@ pub fn AtomicQueue(comptime T: type) type {
         }
 
         pub fn size(self: *Self) usize {
-            const held = self.mutex.acquire();
-            defer held.release();
+            self.mutex.lock();
+            defer self.mutex.unlock();
 
             return self._size();
         }
@@ -117,6 +117,7 @@ test "atomicTest" {
     try expect(y.a == 5);
     try expect(y.b == 3.41);
 
-    try expect(queue._size() == 0);
+    try expect(queue.size() == 0);
+    try expect(queue.empty());
     try expect(queue.pop() == null);
 }
