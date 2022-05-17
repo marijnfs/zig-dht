@@ -72,7 +72,7 @@ pub const UDPServer = struct {
         while (true) {
             std.log.info("Getting", .{});
             const msg = try server.socket.recvFrom();
-            std.log.info("got msg:{s}", .{msg.buf});
+            std.log.info("got msg:{s}", .{utils.hex(msg.buf)});
 
             try server.routing.add_address_seen(msg.from);
 

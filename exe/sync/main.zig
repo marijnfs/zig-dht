@@ -16,15 +16,28 @@ pub fn main() !void {
     std.log.info("arg0 {s}", .{args[0]});
 
     try dht.init();
-    const addr = net.Address.initIp4([_]u8{ 0, 0, 0, 0 }, 4040);
-    var server = try udp_server.UDPServer.init(addr);
+
+    const server_port = try std.fmt.parseInt(u16, args[2], 0);
+    const server_address = try std.net.Address.parseIp(args[1], server_port);
+
+    // const addr = net.Address.initIp4([_]u8{ 0, 0, 0, 0 }, 4040);
+    var server = try udp_server.UDPServer.init(server_address);
     defer server.deinit();
 
+    // add initial connection
+    if (args.len >= 5) {
+        const port = try std.fmt.parseInt(u16, args[4], 0);
+        const address = try std.net.Address.parseIp(args[3], port);
+        try server.routing.add_address_seen(address);
+        try server.job_queue.enqueue(.{ .connect = address });
+    }
+
     // Add default functions
-    var timer = try TimerThread.init(server.job_queue);
-    try timer.add_timer(10000, timer_functions.expand_connections, true);
-    try timer.add_timer(20000, timer_functions.refresh_finger_table, true);
-    try timer.add_timer(30000, timer_functions.sync_finger_table, true);
+    var timer_thread = try TimerThread.init(server.job_queue);
+    try timer_thread.add_timer(10000, timer_functions.expand_connections, true);
+    try timer_thread.add_timer(20000, timer_functions.refresh_finger_table, true);
+    try timer_thread.add_timer(30000, timer_functions.sync_finger_table, true);
+    try timer_thread.start();
 
     try server.start();
 

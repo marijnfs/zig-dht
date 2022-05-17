@@ -51,7 +51,7 @@ pub const TimerThread = struct {
         }
     }
 
-    pub fn start_timer_thread(timer_thread: *TimerThread) !void {
+    pub fn start(timer_thread: *TimerThread) !void {
         // timer_thread = try std.Thread.spawn(.{}, timer_thread_function, .{});
         timer_thread.timer_frame = async timer_thread.timer_thread_function();
     }
