@@ -161,6 +161,7 @@ pub const ServerJob = union(enum) {
     process_message: communication.InboundMessage,
     broadcast: communication.Envelope,
     callback: fn () anyerror!void,
+    stop: bool,
 
     pub fn work(self: *ServerJob, queue: *JobQueue, server: *UDPServer) !void {
         switch (self.*) {
@@ -246,6 +247,12 @@ pub const ServerJob = union(enum) {
             },
             .callback => |callback| {
                 try callback();
+            },
+            .stop => |stop| {
+                if (stop) {
+                    std.log.info("Stop signal for server detecting, stopping job loop", .{});
+                    return;
+                }
             },
         }
     }
