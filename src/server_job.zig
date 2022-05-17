@@ -38,7 +38,7 @@ pub const ServerJob = union(enum) {
                 }
 
                 // Create ping request
-                const content = communication.Content{ .ping = .{ .source_id = server.id, .source_port = server.address.getPort() } };
+                const content = communication.Content{ .ping = .{} };
                 const envelope = communication.Envelope{ .source_id = server.id, .nonce = id_.get_guid(), .content = content };
                 try queue.enqueue(.{ .send_message = .{ .target = .{ .address = address }, .payload = .{ .envelope = envelope } } });
             },
@@ -77,7 +77,7 @@ pub const ServerJob = union(enum) {
                             try server.socket.sendTo(record.address, data);
                         } else {
                             //failed to find any valid record
-                            std.log.info("Failed to find any record for id {}", .{utils.hex(&id)});
+                            std.log.info("Failed to find any record for id {}, records: {}", .{ utils.hex(&id), server.records.items.len });
                         }
                     },
                 }

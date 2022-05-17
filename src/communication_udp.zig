@@ -12,8 +12,8 @@ const udp_server = index.udp_server;
 
 pub const Content = union(enum) {
     ping: struct {
-        source_id: ID,
-        source_port: u16,
+        // source_port: u16,
+        bla: u64 = 0, //void mights till be broken
     },
     pong: struct {
         apparent_ip: std.net.Address,
@@ -140,7 +140,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
 
             // Resolve the possible connection address
             var addr = address;
-            addr.setPort(ping.source_port);
+            // addr.setPort(ping.source_port);
 
             try server.update_ip_id_pair(addr, envelope.source_id);
 
@@ -157,8 +157,10 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
         .pong => |pong| {
             std.log.info("got pong: {}", .{pong});
 
+            try server.update_ip_id_pair(address, envelope.source_id);
+
             var our_ip = pong.apparent_ip;
-            our_ip.setPort(server.address.getPort()); // set the port so the address becomes our likely external connection ip
+            // our_ip.setPort(server.address.getPort()); // set the port so the address becomes our likely external connection ip
             server.apparent_address = our_ip;
             std.log.info("apparent_address: {}", .{server.apparent_address});
         },
