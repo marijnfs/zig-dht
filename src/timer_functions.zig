@@ -3,9 +3,8 @@
 const std = @import("std");
 const index = @import("index.zig");
 const default = index.default;
-const routing = index.routing;
 const utils = index.utils;
-const communication = index.communication;
+const communication = index.communication_udp;
 const id_ = index.id;
 const UDPServer = index.UDPServer;
 const ID = index.ID;
@@ -45,7 +44,7 @@ pub fn expand_connections(_: *UDPServer) !void {
 }
 
 pub fn sync_finger_table(server: *UDPServer) !void {
-    var it = routing.finger_table.iterator();
+    var it = server.routing.finger_table.iterator();
     while (it.next()) |finger| {
         const id = finger.key_ptr.*;
         const node = finger.value_ptr.*;
@@ -59,10 +58,10 @@ pub fn sync_finger_table(server: *UDPServer) !void {
 }
 
 pub fn refresh_finger_table(server: *UDPServer) !void {
-    var it = routing.finger_table.keyIterator();
+    var it = server.routing.finger_table.keyIterator();
     while (it.next()) |id| {
         const content: communication.Content = .{ .find = .{ .id = id.*, .inclusive = 1 } };
-        const envelope = communication.Envelope{ .target_id = std.mem.zeroes(ID), .source_id = default.server.id, .nonce = id_.get_guid(), .content = content };
+        const envelope = communication.Envelope{ .target_id = std.mem.zeroes(ID), .source_id = server.id, .nonce = id_.get_guid(), .content = content };
 
         const outbound_message = communication.OutboundMessage{
             .target = .{ .id = id.* },
