@@ -24,7 +24,7 @@ pub const ServerJob = union(enum) {
     inbound_message: index.socket.UDPIncoming,
     process_message: communication.InboundMessage,
     broadcast: communication.Envelope,
-    callback: fn () anyerror!void,
+    callback: fn (*UDPServer) anyerror!void,
     stop: bool,
 
     pub fn work(self: *ServerJob, queue: *JobQueue, server: *UDPServer) !void {
@@ -110,7 +110,7 @@ pub const ServerJob = union(enum) {
                 }
             },
             .callback => |callback| {
-                try callback();
+                try callback(server);
             },
             .stop => |stop| {
                 if (stop) {

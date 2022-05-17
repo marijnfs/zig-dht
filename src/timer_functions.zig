@@ -7,51 +7,44 @@ const routing = index.routing;
 const utils = index.utils;
 const communication = index.communication;
 const id_ = index.id;
-
+const UDPServer = index.UDPServer;
 const ID = index.ID;
 
-pub fn expand_connections() !void {
-    const n_connections = count_connections();
-
-    std.log.info("n connection: {}", .{n_connections});
-    // We're good
-    if (n_connections > default.target_connections)
-        return;
-
+pub fn expand_connections(_: *UDPServer) !void {
     // Request more known ips
-    var it = default.server.outgoing_connections.keyIterator();
-    while (it.next()) |conn| {
-        std.log.info("conn: {}", .{conn.*.address});
-        const content: communication.Content = .{ .get_known_ips = default.target_connections };
-        const envelope = communication.Envelope{ .target_id = std.mem.zeroes(ID), .source_id = default.server.id, .nonce = id_.get_guid(), .content = content };
+    // var it = default.server.outgoing_connections.keyIterator();
+    // while (it.next()) |conn| {
+    //     std.log.info("conn: {}", .{conn.*.address});
+    //     const content: communication.Content = .{ .get_known_ips = default.target_connections };
+    //     const envelope = communication.Envelope{ .target_id = std.mem.zeroes(ID), .source_id = default.server.id, .nonce = id_.get_guid(), .content = content };
 
-        const outbound_message = communication.OutboundMessage{
-            .target = .{ .guid = conn.*.guid },
-            .payload = .{
-                .envelope = envelope,
-            },
-        };
+    //     const outbound_message = communication.OutboundMessage{
+    //         .target = .{ .guid = conn.*.guid },
+    //         .payload = .{
+    //             .envelope = envelope,
+    //         },
+    //     };
 
-        try default.server.job_queue.enqueue(.{ .send_message = outbound_message });
-    }
+    //     try default.server.job_queue.enqueue(.{ .send_message = outbound_message });
+    // }
 
-    const connections_to_add = default.target_connections - n_connections;
+    // const connections_to_add = default.target_connections - n_connections;
 
-    const addresses_seen = try routing.get_addresses_seen();
-    defer default.allocator.free(addresses_seen);
+    // const addresses_seen = try routing.get_addresses_seen();
+    // defer default.allocator.free(addresses_seen);
 
-    const random_selection = try utils.random_selection(connections_to_add, addresses_seen.len);
-    defer default.allocator.free(random_selection);
+    // const random_selection = try utils.random_selection(connections_to_add, addresses_seen.len);
+    // defer default.allocator.free(random_selection);
 
-    for (random_selection) |s| {
-        const address = addresses_seen[s];
-        if (default.server.is_connected_to(address))
-            continue;
-        try default.server.job_queue.enqueue(.{ .connect = address });
-    }
+    // for (random_selection) |s| {
+    //     const address = addresses_seen[s];
+    //     if (default.server.is_connected_to(address))
+    //         continue;
+    //     try default.server.job_queue.enqueue(.{ .connect = address });
+    // }
 }
 
-pub fn sync_finger_table() !void {
+pub fn sync_finger_table(server: *UDPServer) !void {
     var it = routing.finger_table.iterator();
     while (it.next()) |finger| {
         const id = finger.key_ptr.*;
@@ -59,15 +52,13 @@ pub fn sync_finger_table() !void {
         if (id_.is_zero(node.id))
             continue;
         const address = node.address;
-        if (default.server.is_connected_to(address))
-            continue;
 
         std.log.info("connecting to finger: {} {}", .{ utils.hex(&id), node });
-        try default.server.job_queue.enqueue(.{ .connect = address });
+        try server.job_queue.enqueue(.{ .connect = address });
     }
 }
 
-pub fn refresh_finger_table() !void {
+pub fn refresh_finger_table(server: *UDPServer) !void {
     var it = routing.finger_table.keyIterator();
     while (it.next()) |id| {
         const content: communication.Content = .{ .find = .{ .id = id.*, .inclusive = 1 } };
@@ -80,20 +71,7 @@ pub fn refresh_finger_table() !void {
             },
         };
 
-        try default.server.job_queue.enqueue(.{ .send_message = outbound_message });
-    }
-}
-
-pub fn detect_self_connection() !void {
-    if (default.server.apparent_address) |apparent_address| {
-        var it = default.server.outgoing_connections.keyIterator();
-        while (it.next()) |conn| {
-            std.log.info("comparing {} {}", .{ conn.*.address, apparent_address });
-            if (std.net.Address.eql(conn.*.address, apparent_address)) {
-                conn.*.close();
-                _ = default.server.outgoing_connections.remove(conn.*);
-            }
-        }
+        try server.job_queue.enqueue(.{ .send_message = outbound_message });
     }
 }
 
@@ -107,11 +85,4 @@ pub fn count_connections() usize {
         }
     }
     return n_connections;
-}
-
-pub fn clear_closed_connections() !void {
-    // Todo, don't use remove inside loop; invadlidates the iterator
-
-    try default.server.clean_incoming_connections();
-    try default.server.clean_outgoing_connections();
 }

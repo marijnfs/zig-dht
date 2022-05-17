@@ -4,7 +4,8 @@ const index = @import("index.zig");
 const default = index.default;
 
 const ServerJob = index.server_job.ServerJob;
-const Timer = struct { alarm: i64 = 0, callback: fn () anyerror!void, delay: i64 = 0 };
+const UDPServer = index.UDPServer;
+const Timer = struct { alarm: i64 = 0, callback: fn (*UDPServer) anyerror!void, delay: i64 = 0 };
 
 fn compare_timer(_: void, t1: Timer, t2: Timer) std.math.Order {
     if (t1.alarm < t2.alarm) return .lt else return .gt;
@@ -24,7 +25,7 @@ pub const TimerThread = struct {
         return timer_thread;
     }
 
-    pub fn add_timer(timer_thread: *TimerThread, delay: i64, callback: fn () anyerror!void, repeat: bool) !void {
+    pub fn add_timer(timer_thread: *TimerThread, delay: i64, callback: fn (*UDPServer) anyerror!void, repeat: bool) !void {
         try timer_thread.queue.add(Timer{ .alarm = std.time.milliTimestamp() + delay, .delay = if (repeat) delay else 0, .callback = callback });
     }
 
