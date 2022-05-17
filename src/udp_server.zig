@@ -9,7 +9,6 @@ const utils = index.utils;
 const serial = index.serial;
 const hash = index.hash;
 const model = index.model;
-const routing = index.routing;
 
 const UDPSocket = index.UDPSocket;
 const Hash = index.Hash;
@@ -35,6 +34,7 @@ pub const UDPServer = struct {
     job_queue: *JobQueue,
     id: ID,
     frame: @Frame(accept_loop) = undefined,
+    routing: *index.routing.RoutingTable,
 
     pub fn init(address: net.Address) !*UDPServer {
         var server = try default.allocator.create(UDPServer);
@@ -45,6 +45,7 @@ pub const UDPServer = struct {
         server.socket = try UDPSocket.init(address);
         server.job_queue = try JobQueue.init(server);
         server.id = id_.rand_id();
+        server.routing = try index.routing.RoutingTable.init(server.id, default.n_fingers);
         return server;
     }
 
@@ -71,7 +72,7 @@ pub const UDPServer = struct {
             const msg = try server.socket.recvFrom();
             std.log.info("got msg:{s}", .{msg.buf});
 
-            try routing.add_address_seen(msg.from);
+            try server.routing.add_address_seen(msg.from);
 
             // Update / Add record
             const ip_string = try std.fmt.allocPrint(default.allocator, "{}", .{msg.from});

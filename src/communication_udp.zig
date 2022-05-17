@@ -166,7 +166,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
 
             const id = found.id;
             if (found.address) |addr| {
-                try routing.set_finger(id, addr);
+                try server.routing.set_finger(id, addr);
             } else {
                 std.log.info("found, but got no address", .{});
             }
@@ -176,7 +176,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
 
             defer default.allocator.free(known_ips);
             for (known_ips) |addr| {
-                try routing.add_address_seen(addr);
+                try server.routing.add_address_seen(addr);
             }
         },
     }

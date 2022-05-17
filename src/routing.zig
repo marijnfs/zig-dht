@@ -13,7 +13,7 @@ const Finger = struct {
     address: std.net.Address = undefined,
 };
 
-const RoutingTable = struct {
+pub const RoutingTable = struct {
     id: ID,
     addresses_seen: std.AutoHashMap(Hash, std.net.Address),
     finger_table: std.AutoHashMap(ID, Finger),
@@ -67,7 +67,7 @@ const RoutingTable = struct {
             return error.InvalidFinger;
         }
 
-        const closest_id = try get_closest_id(id);
+        const closest_id = try table.get_closest_id(id);
         try table.finger_table.put(closest_id, .{ .id = id, .address = address });
         std.log.info("put id {} {}", .{ utils.hex(&id), address });
     }
