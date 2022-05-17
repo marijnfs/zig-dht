@@ -1,44 +1,49 @@
-// File containing main operations, or 'Jobs'
+// File containing main operations, or 'ServerJobs'
 // They can be scheduled from various places and run in sequence in the main event loop
 // These Jobs form the main synchronising organising principle. Jobs can do complex tasks as they are guaranteed to operate alone.
 
 const std = @import("std");
+const net = std.net;
 
 const index = @import("index.zig");
 const default = index.default;
-const communication = index.communication;
-const serial = index.serial;
-const utils = index.utils;
-const connections = index.connections;
-const model = index.model;
-const jobs = index.jobs;
-const c = index.c;
-const hash = index.hash;
+const communication = index.communication_udp;
 const id_ = index.id;
+const utils = index.utils;
+const serial = index.serial;
+const hash = index.hash;
+const model = index.model;
 
-const ID = index.ID;
-const Hash = index.Hash;
-const JobQueue = index.JobQueue;
+const UDPServer = index.UDPServer;
 
-// Jobs
-// Main application logic
+const JobQueue = index.JobQueue(ServerJob, *UDPServer);
+
 pub const ServerJob = union(enum) {
-    broadcast: communication.Envelope,
     connect: std.net.Address,
     send_message: communication.OutboundMessage,
-    inbound_message: communication.InboundMessage,
-    process_message: struct {
-        guid: u64, //connection guid
-        envelope: communication.Envelope,
-    },
+    inbound_message: index.socket.UDPIncoming,
+    process_message: communication.InboundMessage,
+    broadcast: communication.Envelope,
     callback: fn () anyerror!void,
+    stop: bool,
 
-    pub fn work(self: *ServerJob, queue: *JobQueue(ServerJob, void), _: void) !void {
+    pub fn work(self: *ServerJob, queue: *JobQueue, server: *UDPServer) !void {
         switch (self.*) {
-            .process_message => |guid_message| {
-                const envelope = guid_message.envelope;
-                const guid = guid_message.guid;
-                try communication.process_message(envelope, guid);
+            .connect => |address| {
+                if (server.apparent_address) |apparent_address| {
+                    if (std.net.Address.eql(address, apparent_address)) {
+                        std.log.info("Asked to connect to our own apparent ip, ignoring", .{});
+                        return;
+                    }
+                }
+
+                // Create ping request
+                const content = communication.Content{ .ping = .{ .source_id = server.id, .source_port = server.address.getPort() } };
+                const envelope = communication.Envelope{ .source_id = server.id, .nonce = id_.get_guid(), .content = content };
+                try queue.enqueue(.{ .send_message = .{ .target = .{ .address = address }, .payload = .{ .envelope = envelope } } });
+            },
+            .process_message => |inbound| {
+                try communication.process_message(inbound.envelope, inbound.address, server);
             },
             // Multi function send message,
             // both for incoming and outgoing messages
@@ -47,48 +52,38 @@ pub const ServerJob = union(enum) {
 
                 const data = switch (payload) {
                     .raw => |raw_data| raw_data,
-                    .envelope => |envelope| blk: {
+                    .envelope => |envelope| b: {
                         const serial_message = try serial.serialise(envelope);
                         defer default.allocator.free(serial_message);
                         const hash_message = try hash.append_hash(serial_message);
                         std.log.info("send message with hash of: {}", .{utils.hex(&hash_message.hash)});
                         try model.add_hash(hash_message.hash);
-                        break :blk hash_message.slice;
+                        break :b hash_message.slice;
                     },
                 };
                 switch (outbound_message.target) {
-                    .guid => |guid| {
-                        // first find the ingoing or outgoing connection
-                        var in_it = default.server.incoming_connections.keyIterator();
-                        while (in_it.next()) |connection| {
-                            if (connection.*.guid == guid) {
-                                try connection.*.write(data);
-                                break;
-                            }
-                        }
-
-                        var out_it = default.server.outgoing_connections.keyIterator();
-                        while (out_it.next()) |connection| {
-                            if (connection.*.guid == guid) {
-                                try connection.*.write(data);
-                                break;
-                            }
-                        }
+                    .address => |address| {
+                        try server.socket.sendTo(address, data);
                     },
                     .id => |id| {
-                        var best_connection = default.server.get_closest_outgoing_connection(id);
+                        //direct match
+                        if (server.id_index.get(id)) |record| {
+                            try server.socket.sendTo(record.address, data);
+                            return;
+                        }
 
-                        if (best_connection) |connection| {
-                            try connection.*.write(data);
+                        // routing
+                        if (server.get_closest_record(id)) |record| {
+                            try server.socket.sendTo(record.address, data);
                         } else {
-                            std.log.info("Couldn't route {}", .{utils.hex(&id)});
+                            //failed to find any valid record
+                            std.log.info("Failed to find any record for id {}", .{utils.hex(&id)});
                         }
                     },
-                    else => {},
                 }
             },
             .inbound_message => |inbound_message| {
-                var data_slice = inbound_message.content;
+                var data_slice = inbound_message.buf;
 
                 var hash_slice = try hash.calculate_and_check_hash(data_slice);
 
@@ -99,9 +94,9 @@ pub const ServerJob = union(enum) {
 
                 var envelope = try serial.deserialise(communication.Envelope, &hash_slice.slice);
 
-                if (id_.is_zero(envelope.target_id) or id_.is_equal(envelope.target_id, default.server.id)) {
+                if (id_.is_zero(envelope.target_id) or id_.is_equal(envelope.target_id, server.id)) {
                     std.log.info("message is for me", .{});
-                    try queue.enqueue(.{ .process_message = .{ .guid = inbound_message.guid, .envelope = envelope } });
+                    try queue.enqueue(.{ .process_message = .{ .envelope = envelope, .address = inbound_message.from } });
                 } else {
                     try queue.enqueue(.{ .send_message = .{ .target = .{ .id = envelope.target_id }, .payload = .{ .raw = data_slice } } });
                 }
@@ -110,35 +105,24 @@ pub const ServerJob = union(enum) {
             },
             .broadcast => |broadcast_envelope| {
                 std.log.info("broadcasting: {s}", .{broadcast_envelope});
-                var it = default.server.outgoing_connections.keyIterator();
-                while (it.next()) |conn| {
-                    try queue.enqueue(.{ .send_message = .{ .target = .{ .guid = conn.*.guid }, .payload = .{ .envelope = broadcast_envelope } } });
+                for (server.records.items) |record| {
+                    try queue.enqueue(.{ .send_message = .{ .target = .{ .address = record.address }, .payload = .{ .envelope = broadcast_envelope } } });
                 }
-
-                // Backward routing (might not be a good idea)
-                var it_back = default.server.incoming_connections.keyIterator();
-                while (it_back.next()) |conn| {
-                    try queue.enqueue(.{ .send_message = .{ .target = .{ .guid = conn.*.guid }, .payload = .{ .envelope = broadcast_envelope } } });
-                }
-            },
-            .connect => |address| {
-                if (default.server.apparent_address) |apparent_address| {
-                    if (std.net.Address.eql(address, apparent_address)) {
-                        std.log.info("Asked to connect to our own apparent ip, ignoring", .{});
-                        return;
-                    }
-                }
-
-                std.log.info("Connecting to {s}", .{address});
-                const out_connection = try default.server.connect_and_add(address);
-                std.log.info("Connected {s}", .{address});
-                const content = communication.Content{ .ping = .{ .source_id = default.server.id, .source_port = default.server.config.port } };
-                const envelope = communication.Envelope{ .source_id = default.server.id, .nonce = id_.get_guid(), .content = content };
-                try queue.enqueue(.{ .send_message = .{ .target = .{ .guid = out_connection.guid }, .payload = .{ .envelope = envelope } } });
             },
             .callback => |callback| {
                 try callback();
             },
+            .stop => |stop| {
+                if (stop) {
+                    std.log.info("Stop signal for server detecting, stopping job loop", .{});
+                    return;
+                }
+            },
         }
     }
 };
+
+test "basics" {
+    var job = ServerJob{ .stop = true };
+    std.log.info("{}", .{job});
+}

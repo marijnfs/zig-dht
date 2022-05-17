@@ -6,7 +6,6 @@ const net = std.net;
 const dht = @import("dht");
 const default = dht.default;
 const utils = dht.utils;
-const timer = dht.timer;
 const timer_functions = dht.timer_functions;
 const jobs = dht.jobs;
 const routing = dht.routing;
@@ -14,18 +13,14 @@ const staging = dht.staging;
 const db = dht.db;
 
 const c = @import("c.zig");
-const Server = dht.Server;
+const UDPServer = dht.UDPServer;
 const ID = dht.ID;
 const JobQueue = dht.JobQueue;
 const ServerJob = dht.ServerJob;
 const UDPSocket = dht.UDPSocket;
-
+const TimerThread = dht.timer.TimerThread;
 // pub const log_level: std.log.Level = .warn;
 var log_file: std.fs.File = undefined;
-
-pub fn time_test() void {
-    std.log.info("timer", .{});
-}
 
 fn filetest() !void {
     var cwd = std.fs.cwd();
@@ -75,40 +70,41 @@ pub fn main() !void {
     try c.init();
     defer c.deinit();
 
+    var server = b: {
+        // const servername = try default.allocator.dupe(u8, args[2]);
+        // const username = try default.allocator.dupe(u8, args[1]);
+        // const port = try std.fmt.parseInt(u16, args[3], 0);
+
+        const address = net.Address.initIp4([_]u8{ 0, 0, 0, 0 }, 4040);
+        const server = try UDPServer.init(address);
+        break :b server;
+    };
+
     // Add default functions
+    var timer = try TimerThread.init(server.job_queue);
     try timer.add_timer(10000, timer_functions.expand_connections, true);
     try timer.add_timer(20000, timer_functions.refresh_finger_table, true);
     try timer.add_timer(30000, timer_functions.sync_finger_table, true);
     try timer.add_timer(30000, timer_functions.clear_closed_connections, true);
     try timer.add_timer(60000, timer_functions.detect_self_connection, true);
 
-    default.server = b: {
-        const servername = try default.allocator.dupe(u8, args[2]);
-        const username = try default.allocator.dupe(u8, args[1]);
-        const port = try std.fmt.parseInt(u16, args[3], 0);
-
-        const server = try Server.create(.{ .name = servername, .username = username, .port = port });
-        try server.initialize();
-        break :b server;
-    };
-
     if (args.len >= 6) {
         const port = try std.fmt.parseInt(u16, args[5], 0);
         const address = try std.net.Address.parseIp(args[4], port);
-        try routing.add_address_seen(address);
-        try default.server.job_queue.enqueue(.{ .connect = address });
+        try server.routing.add_address_seen(address);
+        try server.job_queue.enqueue(.{ .connect = address });
     }
 
     std.log.info("Spawning Server Thread..", .{});
-    try default.server.start();
-    try routing.init_finger_table();
+    try server.start();
 
-    std.log.info("Server ID: {Server ID}", .{utils.hex(&default.server.id)});
+    std.log.info("Server ID: {Server ID}", .{utils.hex(&server.id)});
 
     // start timers
     try timer.start_timer_thread();
 
-    std.log.info("Starting Job loop", .{});
+    std.log.info("Starting server", .{});
+    try server.start();
 
-    try default.server.wait();
+    try server.wait();
 }
