@@ -26,6 +26,7 @@ pub const UDPServer = struct {
         red_flags: usize = 0,
         last_connect: i64 = 0,
     };
+    const HookType = fn ([]const u8, ID, net.Address) anyerror!void;
 
     records: std.ArrayList(*Record),
     ip_index: std.StringHashMap(*Record),
@@ -39,6 +40,9 @@ pub const UDPServer = struct {
     frame: @Frame(accept_loop) = undefined,
     routing: *index.routing.RoutingTable,
 
+    broadcast_hooks: std.ArrayList(HookType),
+    direct_message_hooks: std.ArrayList(HookType),
+
     pub fn init(address: net.Address) !*UDPServer {
         var server = try default.allocator.create(UDPServer);
         server.* = .{
@@ -50,6 +54,8 @@ pub const UDPServer = struct {
             .job_queue = try JobQueue.init(server),
             .id = id_.rand_id(),
             .routing = try index.routing.RoutingTable.init(server.id, default.n_fingers),
+            .broadcast_hooks = std.ArrayList(HookType).init(default.allocator),
+            .direct_message_hooks = std.ArrayList(HookType).init(default.allocator),
         };
         return server;
     }
@@ -81,24 +87,8 @@ pub const UDPServer = struct {
             try server.routing.add_address_seen(msg.from);
 
             // Update / Add record
-            const ip_string = try std.fmt.allocPrint(default.allocator, "{}", .{msg.from});
-            if (server.ip_index.get(ip_string)) |record| {
-                //known
-                record.last_connect = time.milliTimestamp();
-                if (record.red_flags > 1) //drop message
-                {
-                    std.log.info("Dropping red-flag message, flags: {}", .{record.red_flags});
-                    continue;
-                }
-            } else {
-                var record = try default.allocator.create(Record);
-                record.* = .{
-                    .address = msg.from,
-                    .last_connect = time.milliTimestamp(),
-                };
-
-                try server.records.append(record);
-                try server.ip_index.put(ip_string, record);
+            if (!try server.verify_address(msg.from)) {
+                continue;
             }
 
             try server.job_queue.enqueue(.{ .inbound_message = msg });
@@ -111,6 +101,29 @@ pub const UDPServer = struct {
         } else {
             return error.IDNotInRecords;
         }
+    }
+
+    fn verify_address(server: *UDPServer, address: net.Address) !bool {
+        const ip_string = try std.fmt.allocPrint(default.allocator, "{}", .{address});
+        if (server.ip_index.get(ip_string)) |record| {
+            //known
+            record.last_connect = time.milliTimestamp();
+            if (record.red_flags > 1) //drop message
+            {
+                std.log.info("Dropping red-flag message, flags: {}", .{record.red_flags});
+                return false;
+            }
+        } else {
+            var record = try default.allocator.create(Record);
+            record.* = .{
+                .address = address,
+                .last_connect = time.milliTimestamp(),
+            };
+
+            try server.records.append(record);
+            try server.ip_index.put(ip_string, record);
+        }
+        return true;
     }
 
     pub fn get_closest_record(server: *UDPServer, id: ID) ?Record {
