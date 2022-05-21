@@ -1,7 +1,6 @@
 const std = @import("std");
 const index = @import("index.zig");
 const default = index.default;
-const communication = index.communication;
 const utils = index.utils;
 
 const ID = index.ID;
@@ -211,7 +210,7 @@ test "union" {
 }
 
 test "message" {
-    const envelope = communication.Envelope{
+    const envelope = index.communication_udp.Envelope{
         .content = .{
             .broadcast = "test",
         },
@@ -219,7 +218,7 @@ test "message" {
 
     const slice = try serialise(envelope);
     var tmp_slice = slice;
-    var x_2 = try deserialise(communication.Envelope, &tmp_slice);
+    var x_2 = try deserialise(index.communication_udp.Envelope, &tmp_slice);
     const slice2 = try serialise(x_2);
     try expect(std.mem.eql(u8, slice2, slice));
 }

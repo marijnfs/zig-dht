@@ -33,16 +33,16 @@ pub const UDPSocket = struct {
         default.allocator.destroy(socket);
     }
 
+    pub fn bind(socket: *UDPSocket) !void {
+        try os.bind(socket.fd, &socket.address.any, socket.address.getOsSockLen());
+    }
+
     pub fn sendTo(socket: *UDPSocket, address: net.Address, buf: []const u8) !void {
         if (std.io.is_async) {
             _ = try std.event.Loop.instance.?.sendto(socket.fd, buf, os.MSG.NOSIGNAL, &address.any, address.getOsSockLen());
         } else {
             _ = try os.sendto(socket.fd, buf, os.MSG.NOSIGNAL, &address.any, address.getOsSockLen());
         }
-    }
-
-    pub fn bind(socket: *UDPSocket) !void {
-        try os.bind(socket.fd, &socket.address.any, socket.address.getOsSockLen());
     }
 
     pub fn recvFrom(socket: *UDPSocket) !UDPIncoming {
@@ -62,6 +62,13 @@ pub const UDPSocket = struct {
         // const src_address: net.Address = socket.address;
         return UDPIncoming{ .buf = try default.allocator.dupe(u8, buf[0..rlen]), .from = src_address };
     }
+
+    pub fn getAddress(socket: *UDPSocket) !net.Address {
+        var addr: os.sockaddr = undefined;
+        var addrlen: os.socklen_t = @sizeOf(os.sockaddr);
+        try os.getsockname(socket.fd, &addr, &addrlen);
+        return net.Address{ .any = addr };
+    }
 };
 
 test "just init" {
@@ -78,9 +85,9 @@ test "just init" {
     var buf: []const u8 = "blaa";
     try socket.sendTo(other_addr, buf);
 
-    std.log.info("{}", .{socket.fd});
-    std.log.info("{}", .{other_socket.fd});
-
     var recv = try other_socket.recvFrom();
-    std.log.info("{}", .{recv});
+    std.log.warn("{}", .{recv});
+
+    std.log.warn("addr: {}", .{try socket.getAddress()});
+    std.log.warn("{}", .{try other_socket.getAddress()});
 }

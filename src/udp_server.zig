@@ -32,6 +32,7 @@ pub const UDPServer = struct {
     id_index: std.AutoHashMap(ID, *Record),
     address: net.Address,
     apparent_address: ?net.Address = null,
+    public: bool = false, //Are we a public IP (is apparent address same a ours)
     socket: *UDPSocket,
     job_queue: *JobQueue,
     id: ID,
@@ -62,6 +63,7 @@ pub const UDPServer = struct {
         std.log.info("Starting UDP Server", .{});
 
         try server.socket.bind();
+        server.address = server.socket.getAddress();
         server.job_queue.start_job_loop();
         server.frame = async server.accept_loop();
     }
