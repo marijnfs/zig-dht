@@ -1,4 +1,5 @@
 const std = @import("std");
+const time = std.time;
 
 const index = @import("index.zig");
 const default = index.default;
@@ -15,7 +16,7 @@ const Finger = struct {
 
 const Record = struct {
     id: ID = std.mem.zeroes(ID),
-    address: net.Address = undefined,
+    address: std.net.Address = undefined,
     red_flags: usize = 0,
     last_connect: i64 = 0,
 };
@@ -111,27 +112,21 @@ pub const RoutingTable = struct {
         return closest_id;
     }
 
-    fn verify_address(table: *RoutingTable, address: net.Address) !bool {
-        const ip_string = try std.fmt.allocPrint(default.allocator, "{}", .{address});
-        if (table.ip_index.get(ip_string)) |record| {
-            //known
-            record.last_connect = time.milliTimestamp();
-            if (record.red_flags > 1) //drop message
-            {
-                std.log.info("Dropping red-flag message, flags: {}", .{record.red_flags});
-                return false;
-            }
-        } else {
-            var record = try default.allocator.create(Record);
-            record.* = .{
-                .address = address,
-                .last_connect = time.milliTimestamp(),
-            };
+    pub fn get_closest_record(table: *RoutingTable, id: ID) ?Record {
+        var best_record: ?Record = null;
+        var lowest_dist = std.mem.zeroes(ID);
 
-            try table.records.append(record);
-            try table.ip_index.put(ip_string, record);
+        for (table.records.items) |record| {
+            if (id_.is_zero(record.id))
+                continue;
+
+            const dist = id_.xor(id, record.id);
+            if (id_.is_zero(lowest_dist) or id_.less(dist, lowest_dist)) {
+                lowest_dist = dist;
+                best_record = record.*;
+            }
         }
-        return true;
+        return best_record;
     }
 
     pub fn get_record_by_ip(table: *RoutingTable, address: std.net.Address) ?Record {
@@ -164,6 +159,50 @@ pub const RoutingTable = struct {
             try table.id_index.put(id, record);
             try table.ip_index.put(ip_string, record);
         }
+    }
+
+    pub fn select_known_addresses(table: *RoutingTable, n_ips: usize) !std.ArrayList(std.net.Address) {
+        var addresses = std.ArrayList(std.net.Address).init(default.allocator);
+        defer addresses.deinit();
+        for (table.records.items) |record| {
+            try addresses.append(record.address);
+        }
+
+        var selection = try utils.random_selection(n_ips, addresses.items.len);
+        defer default.allocator.free(selection);
+
+        var ips = try default.allocator.alloc(std.net.Address, selection.len);
+
+        var i: usize = 0;
+        for (selection) |s| {
+            ips[i] = addresses.items[s];
+            i += 1;
+        }
+
+        return addresses;
+    }
+
+    pub fn verify_address(table: *RoutingTable, address: std.net.Address) !bool {
+        const ip_string = try std.fmt.allocPrint(default.allocator, "{}", .{address});
+        if (table.ip_index.get(ip_string)) |record| {
+            //known
+            record.last_connect = time.milliTimestamp();
+            if (record.red_flags > 1) //drop message
+            {
+                std.log.info("Dropping red-flag message, flags: {}", .{record.red_flags});
+                return false;
+            }
+        } else {
+            var record = try default.allocator.create(Record);
+            record.* = .{
+                .address = address,
+                .last_connect = time.milliTimestamp(),
+            };
+
+            try table.records.append(record);
+            try table.ip_index.put(ip_string, record);
+        }
+        return true;
     }
 
     fn iter_finger_table(table: *RoutingTable) std.AutoHashMap(ID, Finger).Iterator {

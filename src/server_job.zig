@@ -67,17 +67,17 @@ pub const ServerJob = union(enum) {
                     },
                     .id => |id| {
                         //direct match
-                        if (server.id_index.get(id)) |record| {
+                        if (server.routing.id_index.get(id)) |record| {
                             try server.socket.sendTo(record.address, data);
                             return;
                         }
 
                         // routing
-                        if (server.get_closest_record(id)) |record| {
+                        if (server.routing.get_closest_record(id)) |record| {
                             try server.socket.sendTo(record.address, data);
                         } else {
                             //failed to find any valid record
-                            std.log.info("Failed to find any record for id {}, records: {}", .{ utils.hex(&id), server.records.items.len });
+                            std.log.info("Failed to find any record for id {}, records: {}", .{ utils.hex(&id), server.routing.records.items.len });
                         }
                     },
                 }
@@ -105,7 +105,7 @@ pub const ServerJob = union(enum) {
             },
             .broadcast => |broadcast_envelope| {
                 std.log.info("broadcasting: {s}", .{broadcast_envelope});
-                for (server.records.items) |record| {
+                for (server.routing.records.items) |record| {
                     try queue.enqueue(.{ .send_message = .{ .target = .{ .address = record.address }, .payload = .{ .envelope = broadcast_envelope } } });
                 }
             },

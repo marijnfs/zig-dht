@@ -56,7 +56,7 @@ pub const UDPServer = struct {
         std.log.info("Starting UDP Server", .{});
 
         try server.socket.bind();
-        server.address = server.socket.getAddress();
+        server.address = try server.socket.getAddress();
         server.job_queue.start_job_loop();
         server.frame = async server.accept_loop();
     }
@@ -88,23 +88,6 @@ pub const UDPServer = struct {
         } else {
             return error.IDNotInRecords;
         }
-    }
-
-    pub fn get_closest_record(server: *UDPServer, id: ID) ?Record {
-        var best_record: ?Record = null;
-        var lowest_dist = std.mem.zeroes(ID);
-
-        for (server.records.items) |record| {
-            if (id_.is_zero(record.id))
-                continue;
-
-            const dist = id_.xor(id, record.id);
-            if (id_.is_zero(lowest_dist) or id_.less(dist, lowest_dist)) {
-                lowest_dist = dist;
-                best_record = record.*;
-            }
-        }
-        return best_record;
     }
 };
 

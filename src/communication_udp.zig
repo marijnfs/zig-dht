@@ -88,24 +88,9 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
         .get_known_ips => |n_ips| {
             // sanity check n_ips
 
-            var addresses = std.ArrayList(std.net.Address).init(default.allocator);
-            defer addresses.deinit();
-            for (server.records.items) |record| {
-                try addresses.append(record.address);
-            }
+            var addresses = try server.routing.select_known_addresses(n_ips);
 
-            var selection = try utils.random_selection(n_ips, addresses.items.len);
-            defer default.allocator.free(selection);
-
-            var ips = try default.allocator.alloc(std.net.Address, selection.len);
-
-            var i: usize = 0;
-            for (selection) |s| {
-                ips[i] = addresses.items[s];
-                i += 1;
-            }
-
-            const return_content: Content = .{ .send_known_ips = ips };
+            const return_content: Content = .{ .send_known_ips = addresses.toOwnedSlice() };
             const outbound_message = try build_reply(return_content, envelope, server.id);
 
             try server.job_queue.enqueue(.{ .send_message = outbound_message });
@@ -117,7 +102,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
             std.log.info("finding: {}", .{find});
 
             const search_id = find.id;
-            if (server.get_closest_record(search_id)) |record| {
+            if (server.routing.get_closest_record(search_id)) |record| {
                 const other_dist = id_.xor(record.id, search_id);
                 const our_dist = id_.xor(server.id, search_id);
 
@@ -142,7 +127,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
             var addr = address;
             // addr.setPort(ping.source_port);
 
-            try server.update_ip_id_pair(addr, envelope.source_id);
+            try server.routing.update_ip_id_pair(addr, envelope.source_id);
 
             std.log.info("got ping from addr: {any}", .{addr});
             std.log.info("source id seems: {}", .{utils.hex(&envelope.source_id)});
@@ -157,7 +142,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
         .pong => |pong| {
             std.log.info("got pong: {}", .{pong});
 
-            try server.update_ip_id_pair(address, envelope.source_id);
+            try server.routing.update_ip_id_pair(address, envelope.source_id);
 
             var our_ip = pong.apparent_ip;
             // our_ip.setPort(server.address.getPort()); // set the port so the address becomes our likely external connection ip
