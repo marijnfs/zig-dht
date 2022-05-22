@@ -33,14 +33,14 @@ pub const UDPServer = struct {
     broadcast_hooks: std.ArrayList(HookType),
     direct_message_hooks: std.ArrayList(HookType),
 
-    pub fn init(address: net.Address) !*UDPServer {
+    pub fn init(address: net.Address, id: ID) !*UDPServer {
         var server = try default.allocator.create(UDPServer);
         server.* = .{
             .address = address,
             .socket = try UDPSocket.init(address),
             .job_queue = try JobQueue.init(server),
-            .id = id_.rand_id(),
-            .routing = try index.routing.RoutingTable.init(server.id, default.n_fingers),
+            .id = id,
+            .routing = try index.routing.RoutingTable.init(id, default.n_fingers),
             .broadcast_hooks = std.ArrayList(HookType).init(default.allocator),
             .direct_message_hooks = std.ArrayList(HookType).init(default.allocator),
         };

@@ -13,8 +13,10 @@ pub fn main() !void {
     std.log.info("arg0 {s}", .{args[0]});
 
     try dht.init();
+
+    const id = dht.id.rand_id();
     const addr = net.Address.initIp4([_]u8{ 0, 0, 0, 0 }, 4040);
-    var server = try udp_server.UDPServer.init(addr);
+    var server = try udp_server.UDPServer.init(addr, id);
     defer server.deinit();
 
     try server.start();

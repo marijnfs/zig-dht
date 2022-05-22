@@ -21,7 +21,8 @@ pub fn main() !void {
     const server_address = try std.net.Address.parseIp(args[1], server_port);
 
     // const addr = net.Address.initIp4([_]u8{ 0, 0, 0, 0 }, 4040);
-    var server = try udp_server.UDPServer.init(server_address);
+    const id = dht.id.rand_id();
+    var server = try udp_server.UDPServer.init(server_address, id);
     defer server.deinit();
 
     // add initial connection
