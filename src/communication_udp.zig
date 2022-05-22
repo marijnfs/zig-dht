@@ -29,6 +29,7 @@ pub const Content = union(enum) {
         address: ?std.net.Address,
     },
     broadcast: []const u8,
+    direct_message: []const u8,
 };
 
 pub const Envelope = struct {
@@ -73,21 +74,25 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
 
     switch (content) {
         .broadcast => |broadcast| {
-            std.log.info("broadcast: '{s}'", .{broadcast});
-            // try c.update_user(.{
-            //     .username = broadcast.username,
-            //     .row = broadcast.row,
-            //     .col = broadcast.col,
-            //     .char = broadcast.char,
-            //     .msg = broadcast.msg,
-            //     .id = broadcast.id,
-            // });
-            // try server.job_queue.enqueue(.{ .broadcast = broadcast });
-            // try server.job_queue.enqueue(.{ .render = true });
+            std.log.info("got broadcast: '{s}'", .{broadcast});
+            for (server.broadcast_hooks.items) |callback| {
+                try callback(broadcast, envelope.source_id, address);
+            }
+
+            // broadcast further
+            try server.job_queue.enqueue(.{ .broadcast = envelope });
+        },
+        .direct_message => |direct_message| {
+            std.log.info("got dm: '{s}'", .{direct_message});
+            for (server.direct_message_hooks.items) |callback| {
+                try callback(direct_message, envelope.source_id, address);
+            }
         },
         .get_known_ips => |n_ips| {
             // sanity check n_ips
-
+            if (n_ips <= 0 or n_ips > 64) {
+                return error.TooManyIpsRequested;
+            }
             var addresses = try server.routing.select_known_addresses(n_ips);
 
             const return_content: Content = .{ .send_known_ips = addresses.toOwnedSlice() };
