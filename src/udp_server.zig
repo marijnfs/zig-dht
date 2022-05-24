@@ -23,7 +23,6 @@ pub const UDPServer = struct {
     const HookType = fn ([]const u8, ID, net.Address) anyerror!void;
     address: net.Address,
     apparent_address: ?net.Address = null,
-    public: bool = false, //Are we a public IP (is apparent address same a ours)
     socket: *UDPSocket,
     job_queue: *JobQueue,
     id: ID,
@@ -32,6 +31,7 @@ pub const UDPServer = struct {
 
     broadcast_hooks: std.ArrayList(HookType),
     direct_message_hooks: std.ArrayList(HookType),
+    public: bool = false, // Are we on the public internet, and advertise as such (helping with hole punching)
 
     pub fn init(address: net.Address, id: ID) !*UDPServer {
         var server = try default.allocator.create(UDPServer);

@@ -28,6 +28,18 @@ pub const Content = union(enum) {
         id: ID,
         address: ?std.net.Address,
     },
+    punch_suggest: struct {
+        nonce: ID, //nonce for coordination
+        suggested_public_address: std.net.Address,
+    },
+    punch_request: struct {
+        nonce: ID, //nonce for coordination
+        initiator: bool,
+    },
+    punch_reply: struct {
+        nonce: ID,
+        punch_address: std.net.Address,
+    },
     broadcast: []const u8,
     direct_message: []const u8,
 };
@@ -172,5 +184,10 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
                 try server.routing.add_address_seen(addr);
             }
         },
+        .punch_suggest => |punch_suggest| { // Someone is requesting a punch connection
+
+        },
+        .punch_request => |punch_request| {},
+        .punch_reply => |punch_reply| {},
     }
 }
