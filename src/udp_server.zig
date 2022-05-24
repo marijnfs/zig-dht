@@ -33,6 +33,8 @@ pub const UDPServer = struct {
     direct_message_hooks: std.ArrayList(HookType),
     public: bool = false, // Are we on the public internet, and advertise as such (helping with hole punching)
 
+    punch_map: std.AutoHashMap(ID, net.Address),
+
     pub fn init(address: net.Address, id: ID) !*UDPServer {
         var server = try default.allocator.create(UDPServer);
         server.* = .{
@@ -43,6 +45,7 @@ pub const UDPServer = struct {
             .routing = try index.routing.RoutingTable.init(id, default.n_fingers),
             .broadcast_hooks = std.ArrayList(HookType).init(default.allocator),
             .direct_message_hooks = std.ArrayList(HookType).init(default.allocator),
+            .punch_map = std.AutoHashMap(ID, net.Address).init(default.allocator),
         };
         return server;
     }

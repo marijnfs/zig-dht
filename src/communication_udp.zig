@@ -185,9 +185,69 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
             }
         },
         .punch_suggest => |punch_suggest| { // Someone is requesting a punch connection
-
+            const punch_envelope = Envelope{
+                .source_id = server.id,
+                .content = .{
+                    .punch_request = .{
+                        .nonce = punch_suggest.nonce,
+                        .initiator = false,
+                    },
+                },
+            };
+            try server.job_queue.enqueue(.{
+                .send_message = .{
+                    .target = .{ .address = punch_suggest.suggested_public_address },
+                    .payload = .{ .envelope = punch_envelope },
+                },
+            });
         },
-        .punch_request => |punch_request| {},
-        .punch_reply => |punch_reply| {},
+        .punch_request => |punch_request| {
+            const nonce = punch_request.nonce;
+            const initiator = punch_request.initiator;
+
+            if (server.punch_map.get(nonce)) |stored_address| {
+                std.log.info("Found a punch between {} {}", .{ address, stored_address });
+                if (initiator) {
+                    const punch_envelope = Envelope{
+                        .source_id = server.id,
+                        .content = .{
+                            .punch_reply = .{
+                                .nonce = punch_request.nonce,
+                                .punch_address = stored_address,
+                            },
+                        },
+                    };
+                    try server.job_queue.enqueue(.{
+                        .send_message = .{
+                            .target = .{ .address = address },
+                            .payload = .{ .envelope = punch_envelope },
+                        },
+                    });
+                } else {
+                    const punch_envelope = Envelope{
+                        .source_id = server.id,
+                        .content = .{
+                            .punch_reply = .{
+                                .nonce = punch_request.nonce,
+                                .punch_address = address,
+                            },
+                        },
+                    };
+                    try server.job_queue.enqueue(.{
+                        .send_message = .{
+                            .target = .{ .address = stored_address },
+                            .payload = .{ .envelope = punch_envelope },
+                        },
+                    });
+                }
+
+                _ = server.punch_map.remove(nonce);
+            } else {
+                try server.punch_map.put(nonce, address);
+            }
+        },
+        .punch_reply => |punch_reply| {
+            try server.job_queue.enqueue(.{ .connect = punch_reply.punch_address });
+        },
     }
 }

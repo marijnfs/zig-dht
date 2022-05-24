@@ -82,6 +82,12 @@ pub fn deserialise(comptime T: type, msg_ptr: *[]const u8) !T {
             std.mem.copy(u8, bytes_mem, msg[0..bytes_mem.len]);
             msg_ptr.* = msg[bytes_mem.len..];
         },
+        .Bool => {
+            if (msg.len < 1)
+                return error.FailedToDeserialise;
+            t = msg[0] > 0;
+            msg_ptr.* = msg[1..];
+        },
         .Optional => {
             const C = comptime std.meta.Child(T);
             const opt = try deserialise(u8, msg_ptr);
@@ -156,6 +162,12 @@ pub fn serialise_to_buffer(t: anytype, buf: *std.ArrayList(u8)) !void {
         .Int, .Float => {
             try buf.appendSlice(std.mem.asBytes(&t));
         },
+        .Bool => {
+            if (t)
+                try buf.append(1)
+            else
+                try buf.append(0);
+        },
         .Optional => {
             if (t) |t_| {
                 const opt: u8 = 1;
@@ -178,6 +190,8 @@ test "regular struct" {
         c: ?i64,
         d: ?i64,
         e: f64 = 6,
+        f: bool = true,
+        g: bool = false,
     };
 
     var x = [_]i64{ 1, 2, 3, 4, 5, 6 };
@@ -192,6 +206,8 @@ test "regular struct" {
     try expect(t.d == null);
     try expect(t2.d == null);
     try expect(t.e == t2.e);
+    try expect(t.f == t2.f);
+    try expect(t.g == t2.g);
 }
 
 test "union" {
