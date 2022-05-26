@@ -57,11 +57,13 @@ pub const Envelope = struct {
     content: Content,
 };
 
+const Target = union(enum) {
+    id: ID,
+    address: std.net.Address,
+};
+
 pub const OutboundMessage = struct {
-    target: union(enum) {
-        id: ID,
-        address: std.net.Address,
-    }, //target output node
+    target: Target, //target output node
     payload: union(enum) {
         raw: []const u8,
         envelope: Envelope,
@@ -72,6 +74,38 @@ pub const InboundMessage = struct {
     envelope: Envelope,
     address: std.net.Address, //address of inbound connection (not per se the initiator of the message!)
 };
+
+fn enqueue_envelope(content: Content, target: Target, server: *udp_server.UDPServer) !void {
+    switch (target) {
+        .id => |id| {
+            const envelope = Envelope{
+                .source_id = server.id,
+                .target_id = id,
+                .content = content,
+                .nonce = index.id.get_guid(),
+            };
+            try server.job_queue.enqueue(.{
+                .send_message = .{
+                    .target = .{ .id = id },
+                    .payload = .{ .envelope = envelope },
+                },
+            });
+        },
+        .address => |address| {
+            const envelope = Envelope{
+                .source_id = server.id,
+                .content = content,
+                .nonce = index.id.get_guid(),
+            };
+            try server.job_queue.enqueue(.{
+                .send_message = .{
+                    .target = .{ .address = address },
+                    .payload = .{ .envelope = envelope },
+                },
+            });
+        },
+    }
+}
 
 fn build_reply(content: Content, envelope: Envelope, server_id: ID) !OutboundMessage {
     const reply = Envelope{ .target_id = envelope.source_id, .source_id = server_id, .nonce = envelope.nonce, .content = content };
@@ -193,56 +227,33 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
             // send accept invitation
             // this is also an opportunity to possibly suggest another public ip
             // especially if somehow nonce are suggested
-            const accept_envelope = Envelope{
-                .source_id = server.id,
-                .target_id = envelope.source_id,
-                .content = .{
-                    .punch_accept = .{
-                        .nonce = punch_suggest.nonce,
-                        .suggested_public_address = punch_suggest.suggested_public_address,
-                    },
+            try enqueue_envelope(.{
+                .punch_accept = .{
+                    .nonce = punch_suggest.nonce,
+                    .suggested_public_address = punch_suggest.suggested_public_address,
                 },
-            };
-            try server.job_queue.enqueue(.{
-                .send_message = .{
-                    .target = .{ .id = envelope.source_id },
-                    .payload = .{ .envelope = accept_envelope },
-                },
-            });
+            }, .{
+                .id = envelope.source_id,
+            }, server);
 
             // send suggested ip
-            const punch_envelope = Envelope{
-                .source_id = server.id,
-                .content = .{
-                    .punch_request = .{
-                        .nonce = punch_suggest.nonce,
-                        .initiator = false,
-                    },
+            try enqueue_envelope(.{
+                .punch_request = .{
+                    .nonce = punch_suggest.nonce,
+                    .initiator = false,
                 },
-            };
-            try server.job_queue.enqueue(.{
-                .send_message = .{
-                    .target = .{ .address = punch_suggest.suggested_public_address },
-                    .payload = .{ .envelope = punch_envelope },
-                },
-            });
+            }, .{
+                .address = punch_suggest.suggested_public_address,
+            }, server);
         },
         .punch_accept => |punch_accept| {
-            const punch_envelope = Envelope{
-                .source_id = server.id,
-                .content = .{
-                    .punch_request = .{
-                        .nonce = punch_accept.nonce,
-                        .initiator = true,
-                    },
+            // we got an accept, so now we start the punching as intiator
+            try enqueue_envelope(.{
+                .punch_request = .{
+                    .nonce = punch_accept.nonce,
+                    .initiator = true,
                 },
-            };
-            try server.job_queue.enqueue(.{
-                .send_message = .{
-                    .target = .{ .address = punch_accept.suggested_public_address },
-                    .payload = .{ .envelope = punch_envelope },
-                },
-            });
+            }, .{ .address = punch_accept.suggested_public_address }, server);
         },
         .punch_request => |punch_request| {
             const nonce = punch_request.nonce;
@@ -251,37 +262,19 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
             if (server.punch_map.get(nonce)) |stored_address| {
                 std.log.info("Found a punch between {} {}", .{ address, stored_address });
                 if (initiator) {
-                    const punch_envelope = Envelope{
-                        .source_id = server.id,
-                        .content = .{
-                            .punch_reply = .{
-                                .nonce = punch_request.nonce,
-                                .punch_address = stored_address,
-                            },
+                    try enqueue_envelope(.{
+                        .punch_reply = .{
+                            .nonce = punch_request.nonce,
+                            .punch_address = stored_address,
                         },
-                    };
-                    try server.job_queue.enqueue(.{
-                        .send_message = .{
-                            .target = .{ .address = address },
-                            .payload = .{ .envelope = punch_envelope },
-                        },
-                    });
+                    }, .{ .address = address }, server);
                 } else {
-                    const punch_envelope = Envelope{
-                        .source_id = server.id,
-                        .content = .{
-                            .punch_reply = .{
-                                .nonce = punch_request.nonce,
-                                .punch_address = address,
-                            },
+                    try enqueue_envelope(.{
+                        .punch_reply = .{
+                            .nonce = punch_request.nonce,
+                            .punch_address = address,
                         },
-                    };
-                    try server.job_queue.enqueue(.{
-                        .send_message = .{
-                            .target = .{ .address = stored_address },
-                            .payload = .{ .envelope = punch_envelope },
-                        },
-                    });
+                    }, .{ .address = stored_address }, server);
                 }
 
                 _ = server.punch_map.remove(nonce);
