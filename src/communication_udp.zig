@@ -287,3 +287,17 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
         },
     }
 }
+
+test "message" {
+    const envelope = index.communication_udp.Envelope{
+        .content = .{
+            .broadcast = "test",
+        },
+    };
+
+    const slice = try index.serial.serialise(envelope);
+    var tmp_slice = slice;
+    var x_2 = try index.serial.deserialise(index.communication_udp.Envelope, &tmp_slice);
+    const slice2 = try index.serial.serialise(x_2);
+    try std.testing.expect(std.mem.eql(u8, slice2, slice));
+}

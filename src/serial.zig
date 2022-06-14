@@ -1,9 +1,6 @@
 const std = @import("std");
 const index = @import("index.zig");
 const default = index.default;
-const utils = index.utils;
-
-const ID = index.ID;
 
 pub fn deserialise(comptime T: type, msg_ptr: *[]const u8) !T {
     const msg = msg_ptr.*;
@@ -104,6 +101,12 @@ pub fn deserialise(comptime T: type, msg_ptr: *[]const u8) !T {
 
 pub fn serialise(t: anytype) ![]const u8 {
     var buf = std.ArrayList(u8).init(default.allocator);
+    try serialise_to_buffer(t, &buf);
+    return buf.toOwnedSlice();
+}
+
+pub fn serialise_alloc(t: anytype, allocator: std.mem.Allocator) ![]const u8 {
+    var buf = std.ArrayList(u8).init(allocator);
     try serialise_to_buffer(t, &buf);
     return buf.toOwnedSlice();
 }
@@ -223,18 +226,4 @@ test "union" {
     var x_2 = try deserialise(UnionEnum, &slice);
 
     try expect(x.int == x_2.int);
-}
-
-test "message" {
-    const envelope = index.communication_udp.Envelope{
-        .content = .{
-            .broadcast = "test",
-        },
-    };
-
-    const slice = try serialise(envelope);
-    var tmp_slice = slice;
-    var x_2 = try deserialise(index.communication_udp.Envelope, &tmp_slice);
-    const slice2 = try serialise(x_2);
-    try expect(std.mem.eql(u8, slice2, slice));
 }
