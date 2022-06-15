@@ -1,6 +1,6 @@
 const std = @import("std");
 
-pub fn deserialise(comptime T: type, reader: anytype, allocator: std.mem.Allocator) !T {
+pub fn deserialise(comptime T: type, reader: anytype, allocator: anytype) !T {
     var t: T = undefined;
     const info = @typeInfo(T);
 
@@ -157,7 +157,7 @@ pub fn serialise_alloc(t: anytype, alloc: std.mem.Allocator) ![]u8 {
     return array_list.toOwnedSlice();
 }
 
-pub fn deserialise_slice(comptime T: type, slice: []const u8, allocator: std.mem.Allocator) !T {
+pub fn deserialise_slice(comptime T: type, slice: []const u8, allocator: anytype) !T {
     var reader = std.io.fixedBufferStream(slice).reader();
     return try deserialise(T, reader, allocator);
 }
