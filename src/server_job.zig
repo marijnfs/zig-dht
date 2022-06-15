@@ -53,7 +53,7 @@ pub const ServerJob = union(enum) {
                 const data = switch (payload) {
                     .raw => |raw_data| raw_data,
                     .envelope => |envelope| b: {
-                        const serial_message = try serial.serialise(envelope);
+                        const serial_message = try serial.serialise_alloc(envelope, default.allocator);
                         defer default.allocator.free(serial_message);
                         const hash_message = try hash.append_hash(serial_message);
                         std.log.info("send message with hash of: {}", .{utils.hex(&hash_message.hash)});
@@ -86,13 +86,13 @@ pub const ServerJob = union(enum) {
                 var data_slice = inbound_message.buf;
 
                 var hash_slice = try hash.calculate_and_check_hash(data_slice);
-
                 if (try model.check_and_add_hash(hash_slice.hash)) {
                     std.log.info("message dropped, already seen", .{});
                     return;
                 }
 
-                var envelope = try serial.deserialise(communication.Envelope, &hash_slice.slice);
+                var reader = std.io.fixedBufferStream(hash_slice.slice).reader();
+                var envelope = try serial.deserialise(communication.Envelope, reader, default.allocator);
 
                 if (id_.is_zero(envelope.target_id) or id_.is_equal(envelope.target_id, server.id)) {
                     std.log.info("message is for me", .{});
