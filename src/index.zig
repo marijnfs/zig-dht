@@ -50,7 +50,7 @@ pub fn init() !void {
 }
 
 pub fn seed_rng() !void {
-    // const seed = std.crypto.random.int(u64);
+    // const seed = std.crypto.random.int(u64); //this is broken in async, but fixed one day
     const seed = @intCast(u64, time.milliTimestamp());
     rng = std.rand.DefaultPrng.init(seed);
 }
