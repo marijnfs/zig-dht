@@ -5,8 +5,6 @@ const index = @import("index.zig");
 const default = index.default;
 const ID = index.ID;
 
-pub const hex = std.fmt.fmtSliceHexLower;
-
 pub fn unicodeToInt32(unicode: u21) !u32 {
     var code: u32 = 0;
     _ = try std.unicode.utf8Encode(unicode, std.mem.bytesAsSlice(u8, std.mem.asBytes(&code)));

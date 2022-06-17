@@ -186,7 +186,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
             try server.routing.update_ip_id_pair(addr, envelope.source_id);
 
             std.log.info("got ping from addr: {any}", .{addr});
-            std.log.info("source id seems: {}", .{utils.hex(&envelope.source_id)});
+            std.log.info("source id seems: {}", .{index.hex(&envelope.source_id)});
 
             const return_content: Content = .{ .pong = .{ .apparent_ip = addr } };
             const outbound_message = try build_reply(return_content, envelope, server.id);
@@ -210,7 +210,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
 
             const id = found.id;
             if (found.address) |addr| {
-                try server.routing.set_finger(id, addr);
+                try server.finger_table.set_finger(id, addr);
             } else {
                 std.log.info("found, but got no address", .{});
             }

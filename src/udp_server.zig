@@ -28,6 +28,7 @@ pub const UDPServer = struct {
     id: ID,
     frame: @Frame(accept_loop) = undefined,
     routing: *index.routing.RoutingTable,
+    finger_table: *index.finger_table.FingerTable,
 
     broadcast_hooks: std.ArrayList(HookType),
     direct_message_hooks: std.ArrayList(HookType),
@@ -42,7 +43,9 @@ pub const UDPServer = struct {
             .socket = try UDPSocket.init(address),
             .job_queue = try JobQueue.init(server),
             .id = id,
-            .routing = try index.routing.RoutingTable.init(id, default.n_fingers),
+            .routing = try index.routing.RoutingTable.init(id), //record of all ID <> Address pair seen, with some stats
+            .finger_table = try index.finger_table.FingerTable.init(id, default.n_fingers), //routing table, to keep in sync
+
             .broadcast_hooks = std.ArrayList(HookType).init(default.allocator),
             .direct_message_hooks = std.ArrayList(HookType).init(default.allocator),
             .punch_map = std.AutoHashMap(ID, net.Address).init(default.allocator),
@@ -72,7 +75,7 @@ pub const UDPServer = struct {
         while (true) {
             std.log.info("Getting", .{});
             const msg = try server.socket.recvFrom();
-            std.log.info("got msg:{s}", .{utils.hex(msg.buf)});
+            std.log.info("got msg:{s}", .{index.hex(msg.buf)});
 
             try server.routing.add_address_seen(msg.from);
 

@@ -8,6 +8,7 @@ pub const job_queue = @import("job_queue.zig");
 pub const serial = @import("serial.zig");
 pub const utils = @import("utils.zig");
 pub const routing = @import("routing.zig");
+pub const finger_table = @import("finger_table.zig");
 pub const model = @import("model.zig");
 pub const staging = @import("staging.zig");
 pub const timer = @import("timer.zig");
@@ -32,6 +33,8 @@ pub const UDPServer = udp_server.UDPServer;
 pub var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
 pub var rng = std.rand.DefaultPrng.init(0);
+
+pub const hex = std.fmt.fmtSliceHexLower;
 
 pub const default = struct {
     pub const allocator = gpa.allocator();

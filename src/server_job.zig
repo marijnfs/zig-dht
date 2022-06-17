@@ -56,7 +56,7 @@ pub const ServerJob = union(enum) {
                         const serial_message = try serial.serialise_alloc(envelope, default.allocator);
                         defer default.allocator.free(serial_message);
                         const hash_message = try hash.append_hash(serial_message);
-                        std.log.info("send message with hash of: {}", .{utils.hex(&hash_message.hash)});
+                        std.log.info("send message with hash of: {}", .{index.hex(&hash_message.hash)});
                         try model.add_hash(hash_message.hash);
                         break :b hash_message.slice;
                     },
@@ -77,7 +77,7 @@ pub const ServerJob = union(enum) {
                             try server.socket.sendTo(record.address, data);
                         } else {
                             //failed to find any valid record
-                            std.log.info("Failed to find any record for id {}, records: {}", .{ utils.hex(&id), server.routing.records.items.len });
+                            std.log.info("Failed to find any record for id {}, records: {}", .{ index.hex(&id), server.routing.records.items.len });
                         }
                     },
                 }

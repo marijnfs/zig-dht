@@ -1,3 +1,6 @@
 [submodule "ext/notcurses"]
 	path = ext/notcurses
 	url = https://github.com/dankamongmen/notcurses.git
+[submodule "ext/zig-args"]
+	path = ext/zig-args
+	url = https://github.com/MasterQ32/zig-args.git

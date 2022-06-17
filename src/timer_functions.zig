@@ -44,7 +44,7 @@ pub fn expand_connections(_: *UDPServer) !void {
 }
 
 pub fn sync_finger_table(server: *UDPServer) !void {
-    var it = server.routing.finger_table.iterator();
+    var it = server.finger_table.iterator();
     while (it.next()) |finger| {
         const id = finger.key_ptr.*;
         const node = finger.value_ptr.*;
@@ -52,13 +52,13 @@ pub fn sync_finger_table(server: *UDPServer) !void {
             continue;
         const address = node.address;
 
-        std.log.info("connecting to finger: {} {}", .{ utils.hex(&id), node });
+        std.log.info("connecting to finger: {} {}", .{ index.hex(&id), node });
         try server.job_queue.enqueue(.{ .connect = address });
     }
 }
 
 pub fn refresh_finger_table(server: *UDPServer) !void {
-    var it = server.routing.finger_table.keyIterator();
+    var it = server.finger_table.keyIterator();
     while (it.next()) |id| {
         const content: communication.Content = .{ .find = .{ .id = id.*, .inclusive = 1 } };
         const envelope = communication.Envelope{ .target_id = std.mem.zeroes(ID), .source_id = server.id, .nonce = id_.get_guid(), .content = content };

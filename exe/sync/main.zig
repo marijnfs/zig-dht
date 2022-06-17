@@ -1,5 +1,6 @@
 pub const io_mode = .evented; // use event loop
 
+const args = @import("args");
 const std = @import("std");
 const net = std.net;
 const dht = @import("dht");
@@ -10,28 +11,39 @@ const timer_functions = dht.timer_functions;
 
 const TimerThread = dht.timer.TimerThread;
 
-pub fn main() !void {
-    var args = try std.process.argsAlloc(default.allocator);
-    defer std.process.argsFree(default.allocator, args);
-    std.log.info("arg0 {s}", .{args[0]});
 
+
+pub fn main() !void {
+    const options = try args.parseForCurrentProcess(struct {
+        ip: ?[]const u8 = null,
+        port: ?u16 = null,
+        ip_remote: ?[]const u8 = null,
+        port_remote: ?u16 = null,
+    }, std.heap.page_allocator, .print);
+    if (options.options.ip == null or options.options.port == null) {
+        std.log.warn("Ip not defined", .{});
+        return;
+    }
     try dht.init();
 
-    const server_port = try std.fmt.parseInt(u16, args[2], 0);
-    const server_address = try std.net.Address.parseIp(args[1], server_port);
-
-    // const addr = net.Address.initIp4([_]u8{ 0, 0, 0, 0 }, 4040);
+    const address = try std.net.Address.parseIp(options.options.ip.?, options.options.port.?);
     const id = dht.id.rand_id();
-    var server = try udp_server.UDPServer.init(server_address, id);
+    var server = try udp_server.UDPServer.init(address, id);
     defer server.deinit();
 
-    // add initial connection
-    if (args.len >= 5) {
-        const port = try std.fmt.parseInt(u16, args[4], 0);
-        const address = try std.net.Address.parseIp(args[3], port);
-        try server.routing.add_address_seen(address);
-        try server.job_queue.enqueue(.{ .connect = address });
+    if (options.options.ip_remote != null and options.options.port_remote != null) {
+        const address_remote = try std.net.Address.parseIp(options.options.ip_remote.?, options.options.port_remote.?);
+        try server.routing.add_address_seen(address_remote);
+        try server.job_queue.enqueue(.{ .connect = address_remote });
     }
+
+    // add initial connection
+    // if (args.len >= 5) {
+    //     const port = try std.fmt.parseInt(u16, args[4], 0);
+    //     const address = try std.net.Address.parseIp(args[3], port);
+    //     try server.routing.add_address_seen(address);
+    //     try server.job_queue.enqueue(.{ .connect = address });
+    // }
 
     // Add default functions
     var timer_thread = try TimerThread.init(server.job_queue);
