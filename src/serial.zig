@@ -206,7 +206,6 @@ test "union" {
     defer arena.deinit();
 
     var slice = try serialise_alloc(x, arena.allocator());
-    defer std.testing.allocator.free(slice);
     var x_2 = try deserialise_slice(UnionEnum, slice, arena.allocator());
 
     try expect(x.int == x_2.int);
