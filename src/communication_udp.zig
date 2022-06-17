@@ -75,7 +75,7 @@ pub const InboundMessage = struct {
     address: std.net.Address, //address of inbound connection (not per se the initiator of the message!)
 };
 
-fn enqueue_envelope(content: Content, target: Target, server: *udp_server.UDPServer) !void {
+pub fn enqueue_envelope(content: Content, target: Target, server: *udp_server.UDPServer) !void {
     switch (target) {
         .id => |id| {
             const envelope = Envelope{

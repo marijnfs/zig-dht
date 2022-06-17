@@ -30,8 +30,8 @@ pub const UDPServer = struct {
     routing: *index.routing.RoutingTable,
     finger_table: *index.finger_table.FingerTable,
 
-    broadcast_hooks: std.ArrayList(HookType),
     direct_message_hooks: std.ArrayList(HookType),
+    broadcast_hooks: std.ArrayList(HookType),
     public: bool = false, // Are we on the public internet, and advertise as such (helping with hole punching)
 
     punch_map: std.AutoHashMap(ID, net.Address),
@@ -46,8 +46,8 @@ pub const UDPServer = struct {
             .routing = try index.routing.RoutingTable.init(id), //record of all ID <> Address pair seen, with some stats
             .finger_table = try index.finger_table.FingerTable.init(id, default.n_fingers), //routing table, to keep in sync
 
-            .broadcast_hooks = std.ArrayList(HookType).init(default.allocator),
             .direct_message_hooks = std.ArrayList(HookType).init(default.allocator),
+            .broadcast_hooks = std.ArrayList(HookType).init(default.allocator),
             .punch_map = std.AutoHashMap(ID, net.Address).init(default.allocator),
         };
         return server;
@@ -71,6 +71,14 @@ pub const UDPServer = struct {
         try await server.frame;
     }
 
+    pub fn add_broadcast_hook(server: *UDPServer, hook: HookType) !void {
+        try server.broadcast_hooks.append(hook);
+    }
+
+    pub fn add_direct_message_hook(server: *UDPServer, hook: HookType) !void {
+        try server.direct_message_hooks.append(hook);
+    }
+
     fn accept_loop(server: *UDPServer) !void {
         while (true) {
             std.log.info("Getting", .{});
@@ -85,6 +93,17 @@ pub const UDPServer = struct {
             }
 
             try server.job_queue.enqueue(.{ .inbound_message = msg });
+        }
+    }
+
+    pub fn queue_direct(server: *UDPServer, id: ID, buf: []const u8) !void {
+        communication.enqueue_envelope(.{ .direct_message = buf }, .{ .id = id }, server);
+    }
+
+    pub fn queue_broadcast(server: *UDPServer, buf: []const u8) !void {
+        var it = server.finger_table.valueIterator();
+        while (it.next()) |f| {
+            try communication.enqueue_envelope(.{ .direct_message = buf }, .{ .id = f.id }, server);
         }
     }
 

@@ -11,7 +11,20 @@ const timer_functions = dht.timer_functions;
 
 const TimerThread = dht.timer.TimerThread;
 
+const Messages = union(enum) {
+    check_state: dht.Hash,
+    bloom_check: struct {
+        filter: []bool,
+    },
+};
 
+fn direct_message_hook(buf: []const u8, src_id: dht.ID, src_address: net.Address) !void {
+    std.log.info("direct message {} {} {}", .{ dht.hex(buf), dht.hex(&src_id), src_address });
+}
+
+fn broadcast_hook(buf: []const u8, src_id: dht.ID, src_address: net.Address) !void {
+    std.log.info("direct message {} {} {}", .{ dht.hex(buf), dht.hex(&src_id), src_address });
+}
 
 pub fn main() !void {
     const options = try args.parseForCurrentProcess(struct {
@@ -37,6 +50,9 @@ pub fn main() !void {
         try server.job_queue.enqueue(.{ .connect = address_remote });
     }
 
+    try server.add_direct_message_hook(direct_message_hook);
+    try server.add_broadcast_hook(broadcast_hook);
+
     // add initial connection
     // if (args.len >= 5) {
     //     const port = try std.fmt.parseInt(u16, args[4], 0);
@@ -46,6 +62,7 @@ pub fn main() !void {
     // }
 
     // Add default functions
+
     var timer_thread = try TimerThread.init(server.job_queue);
     try timer_thread.add_timer(10000, timer_functions.expand_connections, true);
     try timer_thread.add_timer(20000, timer_functions.refresh_finger_table, true);
@@ -54,5 +71,9 @@ pub fn main() !void {
 
     try server.start();
 
+    while (true) {
+        try server.queue_broadcast("hello");
+        std.time.sleep(std.time.ns_per_s);
+    }
     try server.wait();
 }

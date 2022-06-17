@@ -57,7 +57,9 @@ pub const ServerJob = union(enum) {
                         defer default.allocator.free(serial_message);
                         const hash_message = try hash.append_hash(serial_message);
                         std.log.info("send message with hash of: {}", .{index.hex(&hash_message.hash)});
+
                         try model.add_hash(hash_message.hash);
+
                         break :b hash_message.slice;
                     },
                 };
