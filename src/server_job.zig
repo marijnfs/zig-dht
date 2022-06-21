@@ -75,11 +75,11 @@ pub const ServerJob = union(enum) {
                         }
 
                         // routing
-                        if (server.routing.get_closest_record(id)) |record| {
-                            try server.socket.sendTo(record.address, data);
+                        if (server.finger_table.get_closest_finger(id)) |finger| {
+                            try server.socket.sendTo(finger.address, data);
                         } else {
                             //failed to find any valid record
-                            std.log.info("Failed to find any record for id {}, records: {}", .{ index.hex(&id), server.routing.records.items.len });
+                            std.log.info("Failed to find any finger for id {}", .{index.hex(&id)});
                         }
                     },
                 }
@@ -107,8 +107,9 @@ pub const ServerJob = union(enum) {
             },
             .broadcast => |broadcast_envelope| {
                 std.log.info("broadcasting: {s}", .{broadcast_envelope});
-                for (server.routing.records.items) |record| {
-                    try queue.enqueue(.{ .send_message = .{ .target = .{ .address = record.address }, .payload = .{ .envelope = broadcast_envelope } } });
+                var it = server.finger_table.valueIterator();
+                while (it.next()) |finger| {
+                    try queue.enqueue(.{ .send_message = .{ .target = .{ .address = finger.address }, .payload = .{ .envelope = broadcast_envelope } } });
                 }
             },
             .callback => |callback| {
