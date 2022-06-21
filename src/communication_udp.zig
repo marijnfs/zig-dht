@@ -180,15 +180,13 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
             std.log.info("got ping: {}", .{ping});
 
             // Resolve the possible connection address
-            var addr = address;
-            // addr.setPort(ping.source_port);
 
-            try server.routing.update_ip_id_pair(addr, envelope.source_id);
+            try server.routing.update_ip_id_pair(envelope.source_id, address);
 
-            std.log.info("got ping from addr: {any}", .{addr});
+            std.log.info("got ping from addr: {any}", .{address});
             std.log.info("source id seems: {}", .{index.hex(&envelope.source_id)});
 
-            const return_content: Content = .{ .pong = .{ .apparent_ip = addr } };
+            const return_content: Content = .{ .pong = .{ .apparent_ip = address } };
             const outbound_message = try build_reply(return_content, envelope, server.id);
 
             std.log.info("reply env: {any}", .{outbound_message.payload});
@@ -196,10 +194,10 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
             try server.job_queue.enqueue(.{ .send_message = outbound_message });
         },
         .pong => |pong| {
-            std.log.info("got pong: {}", .{pong});
+            std.log.info("got pong: {} {} {s}", .{ pong, index.hex(&envelope.source_id), address });
 
-            try server.routing.update_ip_id_pair(address, envelope.source_id);
-
+            try server.routing.update_ip_id_pair(envelope.source_id, address);
+            try server.finger_table.update_ip_id_pair(envelope.source_id, address);
             var our_ip = pong.apparent_ip;
             // our_ip.setPort(server.address.getPort()); // set the port so the address becomes our likely external connection ip
             server.apparent_address = our_ip;

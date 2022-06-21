@@ -28,8 +28,8 @@ fn broadcast_hook(buf: []const u8, src_id: dht.ID, src_address: net.Address) !vo
 
 pub fn main() !void {
     const options = try args.parseForCurrentProcess(struct {
-        ip: ?[]const u8 = null,
-        port: ?u16 = null,
+        ip: ?[]const u8,
+        port: ?u16,
         ip_remote: ?[]const u8 = null,
         port_remote: ?u16 = null,
     }, std.heap.page_allocator, .print);

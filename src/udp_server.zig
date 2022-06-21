@@ -101,6 +101,7 @@ pub const UDPServer = struct {
     }
 
     pub fn queue_broadcast(server: *UDPServer, buf: []const u8) !void {
+        std.log.info("queue_broadcast", .{});
         var it = server.finger_table.valueIterator();
         while (it.next()) |f| {
             try communication.enqueue_envelope(.{ .direct_message = buf }, .{ .id = f.id }, server);

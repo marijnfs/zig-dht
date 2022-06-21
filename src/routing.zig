@@ -67,7 +67,7 @@ pub const RoutingTable = struct {
         return table.id_index.get(id);
     }
 
-    pub fn update_ip_id_pair(table: *RoutingTable, addr: std.net.Address, id: ID) !void {
+    pub fn update_ip_id_pair(table: *RoutingTable, id: ID, addr: std.net.Address) !void {
         const ip_string = try std.fmt.allocPrint(default.allocator, "{}", .{addr});
 
         if (table.ip_index.get(ip_string)) |record| {

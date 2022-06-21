@@ -51,7 +51,20 @@ pub const FingerTable = struct {
 
         const closest_id = try table.get_closest_id(id);
         try table.finger_table.put(closest_id, .{ .id = id, .address = address });
-        std.log.info("put id {} {}", .{ index.hex(&id), address });
+        std.log.info("setting finger [{}] to id:{} addr:{}", .{ index.hex(&closest_id), index.hex(&id), address });
+    }
+
+    pub fn closer_to_me(table: *FingerTable, id: ID, id_other: ID) bool {
+        const distance = id_.xor(id, table.id);
+        const distance_other = id_.xor(id_other, table.id);
+        return id_.less(distance, distance_other);
+    }
+
+    pub fn update_ip_id_pair(table: *FingerTable, id: ID, address: std.net.Address) !void {
+        if (table.get_closest_finger(id)) |finger| {
+            if (table.closer_to_me(id, finger.id))
+                try table.set_finger(id, address);
+        }
     }
 
     pub fn get_closest_id(table: *FingerTable, id: ID) !ID {
@@ -77,8 +90,21 @@ pub const FingerTable = struct {
     }
 
     pub fn get_closest_finger(table: *FingerTable, id: ID) ?Finger {
-        const closest_id = table.get_closest_id(id) catch return null;
-        return table.finger_table.get(closest_id);
+        var closest: Finger = undefined;
+        var closest_id = std.mem.zeroes(ID);
+
+        var it = table.finger_table.iterator();
+        while (it.next()) |finger_item| {
+            const key = finger_item.key_ptr.*;
+            const finger = finger_item.value_ptr.*;
+            const distance = id_.xor(id, key);
+            if (id_.is_zero(closest.id) or id_.less(distance, closest.id)) {
+                closest = finger;
+                closest_id = key;
+            }
+        }
+
+        return closest;
     }
 
     pub fn iterator(table: *FingerTable) std.AutoHashMap(ID, Finger).Iterator {
@@ -91,5 +117,9 @@ pub const FingerTable = struct {
 
     pub fn valueIterator(table: *FingerTable) std.AutoHashMap(ID, Finger).ValueIterator {
         return table.finger_table.valueIterator();
+    }
+
+    pub fn count(table: *FingerTable) usize {
+        return table.finger_table.count();
     }
 };

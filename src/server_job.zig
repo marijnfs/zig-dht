@@ -38,9 +38,7 @@ pub const ServerJob = union(enum) {
                 }
 
                 // Create ping request
-                const content = communication.Content{ .ping = .{} };
-                const envelope = communication.Envelope{ .source_id = server.id, .nonce = id_.get_guid(), .content = content };
-                try queue.enqueue(.{ .send_message = .{ .target = .{ .address = address }, .payload = .{ .envelope = envelope } } });
+                try communication.enqueue_envelope(.{ .ping = .{} }, .{ .address = address }, server);
             },
             .process_message => |inbound| {
                 try communication.process_message(inbound.envelope, inbound.address, server);
@@ -109,6 +107,8 @@ pub const ServerJob = union(enum) {
                 std.log.info("broadcasting: {s}", .{broadcast_envelope});
                 var it = server.finger_table.valueIterator();
                 while (it.next()) |finger| {
+                    std.log.info("broadcast to finger: {s}", .{finger.address});
+
                     try queue.enqueue(.{ .send_message = .{ .target = .{ .address = finger.address }, .payload = .{ .envelope = broadcast_envelope } } });
                 }
             },
