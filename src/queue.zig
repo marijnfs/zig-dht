@@ -1,7 +1,6 @@
 //an atomic queue
 
 const std = @import("std");
-const warn = std.debug.warn;
 
 const ArrayList = std.ArrayList;
 
@@ -23,8 +22,7 @@ pub fn AtomicQueue(comptime T: type) type {
             };
         }
 
-        fn deinit(self: *Self) void {
-            std.debug.warn("atomic queue deinit\n", .{});
+        pub fn deinit(self: *Self) void {
             self.buffer.deinit();
         }
 
