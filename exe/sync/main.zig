@@ -23,7 +23,7 @@ fn direct_message_hook(buf: []const u8, src_id: dht.ID, src_address: net.Address
 }
 
 fn broadcast_hook(buf: []const u8, src_id: dht.ID, src_address: net.Address) !void {
-    std.log.info("direct message {} {} {}", .{ dht.hex(buf), dht.hex(&src_id), src_address });
+    std.log.info("broadcast {} {} {}", .{ dht.hex(buf), dht.hex(&src_id), src_address });
 }
 
 pub fn main() !void {
@@ -64,7 +64,7 @@ pub fn main() !void {
     // Add default functions
 
     var timer_thread = try TimerThread.init(server.job_queue);
-    try timer_thread.add_timer(10000, timer_functions.expand_connections, true);
+    try timer_thread.add_timer(1000, timer_functions.expand_connections, true);
     try timer_thread.add_timer(20000, timer_functions.refresh_finger_table, true);
     try timer_thread.add_timer(30000, timer_functions.sync_finger_table, true);
     try timer_thread.start();

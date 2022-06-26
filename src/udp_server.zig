@@ -82,9 +82,7 @@ pub const UDPServer = struct {
 
     fn accept_loop(server: *UDPServer) !void {
         while (true) {
-            std.log.info("Getting", .{});
             const msg = try server.socket.recvFrom();
-            std.log.info("got msg:{s}", .{index.hex(msg.buf)});
 
             try server.routing.add_address_seen(msg.from);
 
@@ -105,7 +103,8 @@ pub const UDPServer = struct {
         std.log.info("queue_broadcast", .{});
         var it = server.finger_table.valueIterator();
         while (it.next()) |f| {
-            try communication.enqueue_envelope(.{ .direct_message = buf }, .{ .id = f.id }, server);
+            if (!f.is_zero())
+                try communication.enqueue_envelope(.{ .broadcast = buf }, .{ .id = f.id }, server);
         }
     }
 

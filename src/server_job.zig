@@ -93,6 +93,7 @@ pub const ServerJob = union(enum) {
 
                 var reader = std.io.fixedBufferStream(hash_slice.slice).reader();
                 var envelope = try serial.deserialise(communication.Envelope, reader, default.allocator);
+                std.log.info("got msg:{}", .{envelope.content});
 
                 if (id_.is_zero(envelope.target_id) or id_.is_equal(envelope.target_id, server.id)) {
                     std.log.info("message is for me", .{});

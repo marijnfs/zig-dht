@@ -152,9 +152,10 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
             std.log.info("finding: {}", .{find});
 
             const search_id = find.id;
-            if (server.routing.get_closest_record(search_id)) |record| {
-                const other_dist = id_.xor(record.id, search_id);
+
+            if (server.finger_table.get_closest_finger(search_id)) |finger| {
                 const our_dist = id_.xor(server.id, search_id);
+                const other_dist = id_.xor(finger.id, search_id);
 
                 if (id_.less(our_dist, other_dist)) {
                     // Return our apparent address as closest
@@ -164,10 +165,28 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
                     try server.job_queue.enqueue(.{ .send_message = outbound_message });
                 } else {
                     // route forward
-                    try server.job_queue.enqueue(.{ .send_message = .{ .target = .{ .address = record.address }, .payload = .{ .envelope = envelope } } });
+                    try server.job_queue.enqueue(.{ .send_message = .{ .target = .{ .address = finger.address }, .payload = .{ .envelope = envelope } } });
                 }
             } else {
-                // can't find any record
+                // can't find any record, return self
+                const return_content: Content = .{ .found = .{ .id = server.id, .address = server.apparent_address } };
+                std.log.info("Returing {s}", .{server.apparent_address});
+                const outbound_message = try build_reply(return_content, envelope, server.id);
+                try server.job_queue.enqueue(.{ .send_message = outbound_message });
+            }
+        },
+        .found => |found| {
+            std.log.info("found result: {s}", .{found});
+
+            const id = found.id;
+            if (found.address) |addr| {
+                if (found.public) {
+                    try server.public_finger_table.update_closest_finger(id, addr);
+                } else {
+                    try server.finger_table.update_closest_finger(id, addr);
+                }
+            } else {
+                std.log.info("found, but got no address", .{});
             }
         },
         .ping => |ping| {
@@ -194,20 +213,6 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
             // our_ip.setPort(server.address.getPort()); // set the port so the address becomes our likely external connection ip
             server.apparent_address = our_ip;
             std.log.info("apparent_address: {}", .{server.apparent_address});
-        },
-        .found => |found| {
-            std.log.info("found result: {s}", .{found});
-
-            const id = found.id;
-            if (found.address) |addr| {
-                if (found.public) {
-                    try server.public_finger_table.update_closest_finger(id, addr);
-                } else {
-                    try server.finger_table.update_closest_finger(id, addr);
-                }
-            } else {
-                std.log.info("found, but got no address", .{});
-            }
         },
         .send_known_ips => |known_ips| {
             std.log.info("adding n 'known' addresses: {}", .{known_ips.len});

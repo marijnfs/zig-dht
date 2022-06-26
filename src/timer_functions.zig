@@ -10,11 +10,13 @@ const UDPServer = index.UDPServer;
 const ID = index.ID;
 
 pub fn expand_connections(server: *UDPServer) !void {
+    std.log.info("expanding connections {}", .{server.finger_table.n_active_connections()});
     if (server.finger_table.n_active_connections() == 0) {
         var it = server.routing.addresses_seen.valueIterator();
         while (it.next()) |address| {
             const content: communication.Content = .{ .find = .{ .id = server.id, .inclusive = 1 } };
             try communication.enqueue_envelope(content, .{ .address = address.* }, server);
+            std.log.info("expand {} {} ", .{ address, content });
         }
     }
 

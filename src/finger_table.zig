@@ -12,7 +12,7 @@ const Finger = struct {
     id: ID = std.mem.zeroes(ID),
     address: std.net.Address = undefined,
 
-    fn is_zero(finger: *Finger) bool {
+    pub fn is_zero(finger: *Finger) bool {
         return id_.is_zero(finger.id);
     }
 };
@@ -91,7 +91,7 @@ pub const FingerTable = struct {
         var it = table.fingers.valueIterator();
 
         while (it.next()) |finger| {
-            if (finger.is_zero())
+            if (!finger.is_zero())
                 n_active += 1;
         }
         return n_active;
