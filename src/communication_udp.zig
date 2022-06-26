@@ -17,16 +17,19 @@ pub const Content = union(enum) {
     },
     pong: struct {
         apparent_ip: std.net.Address,
+        public: bool, //indicated the responding server is public
     },
     get_known_ips: usize,
     send_known_ips: []std.net.Address,
     find: struct {
         id: ID,
         inclusive: u8 = 0,
+        public: bool = false, //request only a public ip
     },
     found: struct {
         id: ID,
         address: ?std.net.Address,
+        public: bool = false,
     },
     punch_suggest: struct {
         nonce: ID, //nonce for coordination
@@ -186,7 +189,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
             std.log.info("got ping from addr: {any}", .{address});
             std.log.info("source id seems: {}", .{index.hex(&envelope.source_id)});
 
-            const return_content: Content = .{ .pong = .{ .apparent_ip = address } };
+            const return_content: Content = .{ .pong = .{ .apparent_ip = address, .public = server.public } };
             const outbound_message = try build_reply(return_content, envelope, server.id);
 
             std.log.info("reply env: {any}", .{outbound_message.payload});
@@ -197,7 +200,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
             std.log.info("got pong: {} {} {s}", .{ pong, index.hex(&envelope.source_id), address });
 
             try server.routing.update_ip_id_pair(envelope.source_id, address);
-            try server.finger_table.update_ip_id_pair(envelope.source_id, address);
+            try server.finger_table.update_closest_finger(envelope.source_id, address);
             var our_ip = pong.apparent_ip;
             // our_ip.setPort(server.address.getPort()); // set the port so the address becomes our likely external connection ip
             server.apparent_address = our_ip;
@@ -208,7 +211,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
 
             const id = found.id;
             if (found.address) |addr| {
-                try server.finger_table.set_finger(id, addr);
+                try server.finger_table.update_closest_finger(id, addr);
             } else {
                 std.log.info("found, but got no address", .{});
             }
