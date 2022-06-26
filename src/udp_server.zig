@@ -29,6 +29,7 @@ pub const UDPServer = struct {
     frame: @Frame(accept_loop) = undefined,
     routing: *index.routing.RoutingTable,
     finger_table: *index.finger_table.FingerTable,
+    public_finger_table: *index.finger_table.FingerTable, //finger table dedicated to public server
 
     direct_message_hooks: std.ArrayList(HookType),
     broadcast_hooks: std.ArrayList(HookType),
@@ -45,7 +46,7 @@ pub const UDPServer = struct {
             .id = id,
             .routing = try index.routing.RoutingTable.init(id), //record of all ID <> Address pair seen, with some stats
             .finger_table = try index.finger_table.FingerTable.init(id, default.n_fingers), //routing table, to keep in sync
-
+            .public_finger_table = try index.finger_table.FingerTable.init(id, default.n_fingers), //routing table, to keep in sync
             .direct_message_hooks = std.ArrayList(HookType).init(default.allocator),
             .broadcast_hooks = std.ArrayList(HookType).init(default.allocator),
             .punch_map = std.AutoHashMap(ID, net.Address).init(default.allocator),

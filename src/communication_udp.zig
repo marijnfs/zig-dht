@@ -79,35 +79,26 @@ pub const InboundMessage = struct {
 };
 
 pub fn enqueue_envelope(content: Content, target: Target, server: *udp_server.UDPServer) !void {
-    switch (target) {
-        .id => |id| {
-            const envelope = Envelope{
-                .source_id = server.id,
-                .target_id = id,
-                .content = content,
-                .nonce = index.id.get_guid(),
-            };
-            try server.job_queue.enqueue(.{
-                .send_message = .{
-                    .target = .{ .id = id },
-                    .payload = .{ .envelope = envelope },
-                },
-            });
+    const envelope = switch (target) {
+        .id => |id| Envelope{
+            .source_id = server.id,
+            .target_id = id,
+            .content = content,
+            .nonce = index.id.get_guid(),
         },
-        .address => |address| {
-            const envelope = Envelope{
-                .source_id = server.id,
-                .content = content,
-                .nonce = index.id.get_guid(),
-            };
-            try server.job_queue.enqueue(.{
-                .send_message = .{
-                    .target = .{ .address = address },
-                    .payload = .{ .envelope = envelope },
-                },
-            });
+        .address => Envelope{
+            .source_id = server.id,
+            .content = content,
+            .nonce = index.id.get_guid(),
         },
-    }
+    };
+
+    try server.job_queue.enqueue(.{
+        .send_message = .{
+            .target = target,
+            .payload = .{ .envelope = envelope },
+        },
+    });
 }
 
 fn build_reply(content: Content, envelope: Envelope, server_id: ID) !OutboundMessage {
@@ -198,9 +189,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
         },
         .pong => |pong| {
             std.log.info("got pong: {} {} {s}", .{ pong, index.hex(&envelope.source_id), address });
-
             try server.routing.update_ip_id_pair(envelope.source_id, address);
-            try server.finger_table.update_closest_finger(envelope.source_id, address);
             var our_ip = pong.apparent_ip;
             // our_ip.setPort(server.address.getPort()); // set the port so the address becomes our likely external connection ip
             server.apparent_address = our_ip;
@@ -211,7 +200,11 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
 
             const id = found.id;
             if (found.address) |addr| {
-                try server.finger_table.update_closest_finger(id, addr);
+                if (found.public) {
+                    try server.public_finger_table.update_closest_finger(id, addr);
+                } else {
+                    try server.finger_table.update_closest_finger(id, addr);
+                }
             } else {
                 std.log.info("found, but got no address", .{});
             }

@@ -9,7 +9,15 @@ const id_ = index.id;
 const UDPServer = index.UDPServer;
 const ID = index.ID;
 
-pub fn expand_connections(_: *UDPServer) !void {
+pub fn expand_connections(server: *UDPServer) !void {
+    if (server.finger_table.n_active_connections() == 0) {
+        var it = server.routing.addresses_seen.valueIterator();
+        while (it.next()) |address| {
+            const content: communication.Content = .{ .find = .{ .id = server.id, .inclusive = 1 } };
+            try communication.enqueue_envelope(content, .{ .address = address.* }, server);
+        }
+    }
+
     // Request more known ips
     // var it = default.server.outgoing_connections.keyIterator();
     // while (it.next()) |conn| {
@@ -58,19 +66,20 @@ pub fn sync_finger_table(server: *UDPServer) !void {
 }
 
 pub fn refresh_finger_table(server: *UDPServer) !void {
-    var it = server.finger_table.keyIterator();
-    while (it.next()) |id| {
-        const content: communication.Content = .{ .find = .{ .id = id.*, .inclusive = 1 } };
-        const envelope = communication.Envelope{ .target_id = std.mem.zeroes(ID), .source_id = server.id, .nonce = id_.get_guid(), .content = content };
-
-        const outbound_message = communication.OutboundMessage{
-            .target = .{ .id = id.* },
-            .payload = .{
-                .envelope = envelope,
-            },
-        };
-
-        try server.job_queue.enqueue(.{ .send_message = outbound_message });
+    {
+        var it = server.finger_table.keyIterator();
+        while (it.next()) |id| {
+            const content: communication.Content = .{ .find = .{ .id = id.*, .inclusive = 1 } };
+            try communication.enqueue_envelope(content, .{ .id = id.* }, server);
+        }
+    }
+    // update public table
+    {
+        var it = server.finger_table.keyIterator();
+        while (it.next()) |id| {
+            const content: communication.Content = .{ .find = .{ .id = id.*, .inclusive = 1, .public = true } };
+            try communication.enqueue_envelope(content, .{ .id = id.* }, server);
+        }
     }
 }
 

@@ -11,6 +11,10 @@ const Hash = index.Hash;
 const Finger = struct {
     id: ID = std.mem.zeroes(ID),
     address: std.net.Address = undefined,
+
+    fn is_zero(finger: *Finger) bool {
+        return id_.is_zero(finger.id);
+    }
 };
 
 pub const FingerTable = struct {
@@ -80,6 +84,17 @@ pub const FingerTable = struct {
 
     pub fn count(table: *FingerTable) usize {
         return table.fingers.count();
+    }
+
+    pub fn n_active_connections(table: *FingerTable) usize {
+        var n_active: usize = 0;
+        var it = table.fingers.valueIterator();
+
+        while (it.next()) |finger| {
+            if (finger.is_zero())
+                n_active += 1;
+        }
+        return n_active;
     }
 
     fn closer_to_me(table: *FingerTable, id: ID, id_other: ID) bool {
