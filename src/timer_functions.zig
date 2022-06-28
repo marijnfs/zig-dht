@@ -9,11 +9,31 @@ const id_ = index.id;
 const UDPServer = index.UDPServer;
 const ID = index.ID;
 
-pub fn expand_connections(_: *UDPServer) !void {
+pub fn expand_connections(server: *UDPServer) !void {
+    //TODO: Make sure n_active_connections keeps 'last connect' into account
+    // Needs heartbeat
+    std.log.debug("expanding connections {}", .{server.finger_table.n_active_connections()});
+    if (server.finger_table.n_active_connections() == 0) {
+        var it = server.routing.addresses_seen.valueIterator();
+        while (it.next()) |address| {
+            {
+                const content: communication.Content = .{ .ping = .{} };
+                try communication.enqueue_envelope(content, .{ .address = address.* }, server);
+            }
+            {
+                var key_it = server.finger_table.keyIterator();
+                while (key_it.next()) |key| {
+                    const content: communication.Content = .{ .find = .{ .id = key.*, .inclusive = 1 } };
+                    try communication.enqueue_envelope(content, .{ .address = address.* }, server);
+                }
+            }
+        }
+    }
+
     // Request more known ips
     // var it = default.server.outgoing_connections.keyIterator();
     // while (it.next()) |conn| {
-    //     std.log.info("conn: {}", .{conn.*.address});
+    //     std.log.debug("conn: {}", .{conn.*.address});
     //     const content: communication.Content = .{ .get_known_ips = default.target_connections };
     //     const envelope = communication.Envelope{ .target_id = std.mem.zeroes(ID), .source_id = default.server.id, .nonce = id_.get_guid(), .content = content };
 
@@ -44,6 +64,8 @@ pub fn expand_connections(_: *UDPServer) !void {
 }
 
 pub fn sync_finger_table(server: *UDPServer) !void {
+    std.log.info("sync finger table", .{});
+
     var it = server.finger_table.iterator();
     while (it.next()) |finger| {
         const id = finger.key_ptr.*;
@@ -52,25 +74,27 @@ pub fn sync_finger_table(server: *UDPServer) !void {
             continue;
         const address = node.address;
 
-        std.log.info("connecting to finger: {} {}", .{ index.hex(&id), node });
+        std.log.debug("connecting to finger: {} {}", .{ index.hex(&id), node });
         try server.job_queue.enqueue(.{ .connect = address });
     }
 }
 
 pub fn refresh_finger_table(server: *UDPServer) !void {
-    var it = server.finger_table.keyIterator();
-    while (it.next()) |id| {
-        const content: communication.Content = .{ .find = .{ .id = id.*, .inclusive = 1 } };
-        const envelope = communication.Envelope{ .target_id = std.mem.zeroes(ID), .source_id = server.id, .nonce = id_.get_guid(), .content = content };
-
-        const outbound_message = communication.OutboundMessage{
-            .target = .{ .id = id.* },
-            .payload = .{
-                .envelope = envelope,
-            },
-        };
-
-        try server.job_queue.enqueue(.{ .send_message = outbound_message });
+    std.log.info("refresh finger table", .{});
+    {
+        var it = server.finger_table.keyIterator();
+        while (it.next()) |id| {
+            const content: communication.Content = .{ .find = .{ .id = id.*, .inclusive = 1 } };
+            try communication.enqueue_envelope(content, .{ .id = id.* }, server);
+        }
+    }
+    // update public table
+    {
+        var it = server.public_finger_table.keyIterator();
+        while (it.next()) |id| {
+            const content: communication.Content = .{ .find = .{ .id = id.*, .inclusive = 1, .public = true } };
+            try communication.enqueue_envelope(content, .{ .id = id.* }, server);
+        }
     }
 }
 

@@ -1,4 +1,5 @@
 pub const io_mode = .evented; // use event loop
+pub const log_level: std.log.Level = .info;
 
 const args = @import("args");
 const std = @import("std");
@@ -19,17 +20,17 @@ const Messages = union(enum) {
 };
 
 fn direct_message_hook(buf: []const u8, src_id: dht.ID, src_address: net.Address) !void {
-    std.log.info("direct message {} {} {}", .{ dht.hex(buf), dht.hex(&src_id), src_address });
+    std.log.info("direct message hook {} {} {}", .{ dht.hex(buf), dht.hex(&src_id), src_address });
 }
 
 fn broadcast_hook(buf: []const u8, src_id: dht.ID, src_address: net.Address) !void {
-    std.log.info("direct message {} {} {}", .{ dht.hex(buf), dht.hex(&src_id), src_address });
+    std.log.info("broadcast hook {s} {} {}", .{ buf, dht.hex(&src_id), src_address });
 }
 
 pub fn main() !void {
     const options = try args.parseForCurrentProcess(struct {
-        ip: ?[]const u8 = null,
-        port: ?u16 = null,
+        ip: ?[]const u8,
+        port: ?u16,
         ip_remote: ?[]const u8 = null,
         port_remote: ?u16 = null,
     }, std.heap.page_allocator, .print);
@@ -64,7 +65,7 @@ pub fn main() !void {
     // Add default functions
 
     var timer_thread = try TimerThread.init(server.job_queue);
-    try timer_thread.add_timer(10000, timer_functions.expand_connections, true);
+    try timer_thread.add_timer(1000, timer_functions.expand_connections, true);
     try timer_thread.add_timer(20000, timer_functions.refresh_finger_table, true);
     try timer_thread.add_timer(30000, timer_functions.sync_finger_table, true);
     try timer_thread.start();

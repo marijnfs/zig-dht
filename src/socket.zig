@@ -57,9 +57,7 @@ pub const UDPSocket = struct {
         else
             try os.recvfrom(socket.fd, buf, flags, &src_sockaddr, &addrlen);
 
-        // std.log.info("rlen {}", .{rlen});
         const src_address = net.Address{ .any = src_sockaddr };
-        // const src_address: net.Address = socket.address;
         return UDPIncoming{ .buf = try default.allocator.dupe(u8, buf[0..rlen]), .from = src_address };
     }
 

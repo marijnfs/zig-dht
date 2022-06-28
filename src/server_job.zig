@@ -32,15 +32,13 @@ pub const ServerJob = union(enum) {
             .connect => |address| {
                 if (server.apparent_address) |apparent_address| {
                     if (std.net.Address.eql(address, apparent_address)) {
-                        std.log.info("Asked to connect to our own apparent ip, ignoring", .{});
+                        std.log.debug("Asked to connect to our own apparent ip, ignoring", .{});
                         return;
                     }
                 }
 
                 // Create ping request
-                const content = communication.Content{ .ping = .{} };
-                const envelope = communication.Envelope{ .source_id = server.id, .nonce = id_.get_guid(), .content = content };
-                try queue.enqueue(.{ .send_message = .{ .target = .{ .address = address }, .payload = .{ .envelope = envelope } } });
+                try communication.enqueue_envelope(.{ .ping = .{} }, .{ .address = address }, server);
             },
             .process_message => |inbound| {
                 try communication.process_message(inbound.envelope, inbound.address, server);
@@ -56,7 +54,7 @@ pub const ServerJob = union(enum) {
                         const serial_message = try serial.serialise_alloc(envelope, default.allocator);
                         defer default.allocator.free(serial_message);
                         const hash_message = try hash.append_hash(serial_message);
-                        std.log.info("send message with hash of: {}", .{index.hex(&hash_message.hash)});
+                        std.log.debug("send message with hash of: {}", .{index.hex(&hash_message.hash)});
 
                         try model.add_hash(hash_message.hash);
 
@@ -75,11 +73,11 @@ pub const ServerJob = union(enum) {
                         }
 
                         // routing
-                        if (server.finger_table.get_closest_finger(id)) |finger| {
+                        if (server.finger_table.get_closest_active_finger(id)) |finger| {
                             try server.socket.sendTo(finger.address, data);
                         } else {
                             //failed to find any valid record
-                            std.log.info("Failed to find any finger for id {}", .{index.hex(&id)});
+                            std.log.debug("Failed to find any finger for id {}", .{index.hex(&id)});
                         }
                     },
                 }
@@ -89,26 +87,31 @@ pub const ServerJob = union(enum) {
 
                 var hash_slice = try hash.calculate_and_check_hash(data_slice);
                 if (try model.check_and_add_hash(hash_slice.hash)) {
-                    std.log.info("message dropped, already seen", .{});
+                    std.log.debug("message dropped, already seen", .{});
                     return;
                 }
 
                 var reader = std.io.fixedBufferStream(hash_slice.slice).reader();
                 var envelope = try serial.deserialise(communication.Envelope, reader, default.allocator);
+                std.log.debug("got msg:{}", .{envelope.content});
 
                 if (id_.is_zero(envelope.target_id) or id_.is_equal(envelope.target_id, server.id)) {
-                    std.log.info("message is for me", .{});
+                    std.log.debug("message is for me", .{});
                     try queue.enqueue(.{ .process_message = .{ .envelope = envelope, .address = inbound_message.from } });
                 } else {
                     try queue.enqueue(.{ .send_message = .{ .target = .{ .id = envelope.target_id }, .payload = .{ .raw = data_slice } } });
                 }
 
-                std.log.info("process forward message: {any}", .{envelope});
+                std.log.debug("process forward message: {any}", .{envelope});
             },
             .broadcast => |broadcast_envelope| {
-                std.log.info("broadcasting: {s}", .{broadcast_envelope});
+                std.log.debug("broadcasting: {s}", .{broadcast_envelope});
                 var it = server.finger_table.valueIterator();
                 while (it.next()) |finger| {
+                    if (finger.is_zero())
+                        continue;
+                    std.log.debug("broadcast to finger: {s}", .{finger.address});
+
                     try queue.enqueue(.{ .send_message = .{ .target = .{ .address = finger.address }, .payload = .{ .envelope = broadcast_envelope } } });
                 }
             },
@@ -117,7 +120,7 @@ pub const ServerJob = union(enum) {
             },
             .stop => |stop| {
                 if (stop) {
-                    std.log.info("Stop signal for server detecting, stopping job loop", .{});
+                    std.log.debug("Stop signal for server detecting, stopping job loop", .{});
                     return;
                 }
             },
@@ -127,5 +130,5 @@ pub const ServerJob = union(enum) {
 
 test "basics" {
     var job = ServerJob{ .stop = true };
-    std.log.info("{}", .{job});
+    std.log.debug("{}", .{job});
 }

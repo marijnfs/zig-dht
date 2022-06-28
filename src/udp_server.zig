@@ -29,6 +29,7 @@ pub const UDPServer = struct {
     frame: @Frame(accept_loop) = undefined,
     routing: *index.routing.RoutingTable,
     finger_table: *index.finger_table.FingerTable,
+    public_finger_table: *index.finger_table.FingerTable, //finger table dedicated to public server
 
     direct_message_hooks: std.ArrayList(HookType),
     broadcast_hooks: std.ArrayList(HookType),
@@ -45,7 +46,7 @@ pub const UDPServer = struct {
             .id = id,
             .routing = try index.routing.RoutingTable.init(id), //record of all ID <> Address pair seen, with some stats
             .finger_table = try index.finger_table.FingerTable.init(id, default.n_fingers), //routing table, to keep in sync
-
+            .public_finger_table = try index.finger_table.FingerTable.init(id, default.n_fingers), //routing table, to keep in sync
             .direct_message_hooks = std.ArrayList(HookType).init(default.allocator),
             .broadcast_hooks = std.ArrayList(HookType).init(default.allocator),
             .punch_map = std.AutoHashMap(ID, net.Address).init(default.allocator),
@@ -81,9 +82,7 @@ pub const UDPServer = struct {
 
     fn accept_loop(server: *UDPServer) !void {
         while (true) {
-            std.log.info("Getting", .{});
             const msg = try server.socket.recvFrom();
-            std.log.info("got msg:{s}", .{index.hex(msg.buf)});
 
             try server.routing.add_address_seen(msg.from);
 
@@ -101,10 +100,9 @@ pub const UDPServer = struct {
     }
 
     pub fn queue_broadcast(server: *UDPServer, buf: []const u8) !void {
-        var it = server.finger_table.valueIterator();
-        while (it.next()) |f| {
-            try communication.enqueue_envelope(.{ .direct_message = buf }, .{ .id = f.id }, server);
-        }
+        std.log.debug("queue_broadcast", .{});
+        const envelope = communication.build_envelope(.{ .broadcast = buf }, .{ .id = std.mem.zeroes(ID) }, server);
+        try server.job_queue.enqueue(.{ .broadcast = envelope });
     }
 
     pub fn send(server: *UDPServer, id: ID, buf: []const u8) !void {

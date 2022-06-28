@@ -11,7 +11,7 @@ const RetType = struct { hash: Hash, slice: []const u8 };
 
 pub fn calculate_and_check_hash(data_slice: []const u8) !RetType {
     if (data_slice.len < @sizeOf(Hash)) {
-        std.log.info("message dropped", .{});
+        std.log.warn("message dropped", .{});
         return error.TooShort;
     }
 
@@ -19,7 +19,7 @@ pub fn calculate_and_check_hash(data_slice: []const u8) !RetType {
     const body_slice = data_slice[@sizeOf(Hash)..];
     const calculated_hash = utils.calculate_hash(body_slice);
     if (!id_.is_equal(reported_hash, calculated_hash)) {
-        std.log.info("message dropped, hash doesn't match", .{});
+        std.log.warn("message dropped, hash doesn't match", .{});
         return error.FalseHash;
     }
     return RetType{ .hash = calculated_hash, .slice = body_slice };
