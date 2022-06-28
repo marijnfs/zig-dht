@@ -64,6 +64,8 @@ pub fn expand_connections(server: *UDPServer) !void {
 }
 
 pub fn sync_finger_table(server: *UDPServer) !void {
+    std.log.info("sync finger table", .{});
+
     var it = server.finger_table.iterator();
     while (it.next()) |finger| {
         const id = finger.key_ptr.*;
@@ -78,6 +80,7 @@ pub fn sync_finger_table(server: *UDPServer) !void {
 }
 
 pub fn refresh_finger_table(server: *UDPServer) !void {
+    std.log.info("refresh finger table", .{});
     {
         var it = server.finger_table.keyIterator();
         while (it.next()) |id| {
@@ -87,7 +90,7 @@ pub fn refresh_finger_table(server: *UDPServer) !void {
     }
     // update public table
     {
-        var it = server.finger_table.keyIterator();
+        var it = server.public_finger_table.keyIterator();
         while (it.next()) |id| {
             const content: communication.Content = .{ .find = .{ .id = id.*, .inclusive = 1, .public = true } };
             try communication.enqueue_envelope(content, .{ .id = id.* }, server);

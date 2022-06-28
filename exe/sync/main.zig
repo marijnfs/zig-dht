@@ -1,4 +1,5 @@
 pub const io_mode = .evented; // use event loop
+pub const log_level: std.log.Level = .info;
 
 const args = @import("args");
 const std = @import("std");
@@ -23,7 +24,7 @@ fn direct_message_hook(buf: []const u8, src_id: dht.ID, src_address: net.Address
 }
 
 fn broadcast_hook(buf: []const u8, src_id: dht.ID, src_address: net.Address) !void {
-    std.log.info("broadcast hook {} {} {}", .{ dht.hex(buf), dht.hex(&src_id), src_address });
+    std.log.info("broadcast hook {s} {} {}", .{ buf, dht.hex(&src_id), src_address });
 }
 
 pub fn main() !void {
