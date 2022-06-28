@@ -10,13 +10,9 @@ const UDPServer = index.UDPServer;
 const ID = index.ID;
 
 pub fn expand_connections(server: *UDPServer) !void {
+    //TODO: Make sure n_active_connections keeps 'last connect' into account
+    // Needs heartbeat
     std.log.info("expanding connections {}", .{server.finger_table.n_active_connections()});
-    {
-        var it = server.finger_table.valueIterator();
-        while (it.next()) |finger| {
-            std.log.info("finger: {}", .{index.hex(&finger.id)});
-        }
-    }
     if (server.finger_table.n_active_connections() == 0) {
         var it = server.routing.addresses_seen.valueIterator();
         while (it.next()) |address| {
@@ -25,9 +21,12 @@ pub fn expand_connections(server: *UDPServer) !void {
                 try communication.enqueue_envelope(content, .{ .address = address.* }, server);
             }
             {
-                const content: communication.Content = .{ .find = .{ .id = server.id, .inclusive = 1 } };
-                try communication.enqueue_envelope(content, .{ .address = address.* }, server);
-                std.log.info("expand {} {} ", .{ address, content });
+                std.log.info("expand  ", .{});
+                var key_it = server.finger_table.keyIterator();
+                while (key_it.next()) |key| {
+                    const content: communication.Content = .{ .find = .{ .id = key.*, .inclusive = 1 } };
+                    try communication.enqueue_envelope(content, .{ .address = address.* }, server);
+                }
             }
         }
     }
