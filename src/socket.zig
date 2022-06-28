@@ -12,7 +12,7 @@ pub const UDPIncoming = struct {
 };
 
 pub const UDPSocket = struct {
-    fd: os.socket_t,
+    fd: os.socket_t = 0,
     address: net.Address,
 
     pub fn init(address: net.Address) !*UDPSocket {
@@ -21,9 +21,10 @@ pub const UDPSocket = struct {
         const sock_flags = os.SOCK.DGRAM | os.SOCK.CLOEXEC | os.SOCK.NONBLOCK;
 
         socket.* = .{
-            .fd = try os.socket(address.any.family, sock_flags, os.IPPROTO.UDP),
             .address = address,
         };
+
+        socket.fd = try os.socket(address.any.family, sock_flags, os.IPPROTO.UDP);
 
         return socket;
     }
