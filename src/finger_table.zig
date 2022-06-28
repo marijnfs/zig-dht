@@ -38,30 +38,27 @@ pub const FingerTable = struct {
     }
 
     pub fn update_closest_finger(table: *FingerTable, id: ID, address: std.net.Address) !void {
-        if (table.get_closest_finger(id)) |*finger| {
+        if (table.get_closest_finger(id)) |finger| {
             finger.* = .{ .id = id, .address = address };
         }
     }
 
-    pub fn get_closest_finger(table: *FingerTable, id: ID) ?Finger {
-        const closest_id = table.get_closest_id(id) catch return null;
-        return table.fingers.get(closest_id);
+    pub fn get_closest_finger(table: *FingerTable, id: ID) ?*Finger {
+        const closest_id = table.get_closest_key(id) catch return null;
+        return table.fingers.getPtr(closest_id);
     }
 
-    pub fn get_closest_id(table: *FingerTable, id: ID) !ID {
-        var it = table.fingers.valueIterator();
+    pub fn get_closest_key(table: *FingerTable, id: ID) !ID {
+        var it = table.fingers.keyIterator();
 
         var closest = std.mem.zeroes(ID);
         var closest_id = std.mem.zeroes(ID);
 
-        while (it.next()) |finger| {
-            const finger_id = finger.*.id;
-            if (id_.is_zero(finger_id)) //value is not set yet,
-                continue;
-            const distance = id_.xor(id, finger_id);
+        while (it.next()) |key| {
+            const distance = id_.xor(id, key.*);
             if (id_.is_zero(closest) or id_.less(distance, closest)) {
                 closest = distance;
-                closest_id = finger_id;
+                closest_id = key.*;
             }
         }
 

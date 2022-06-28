@@ -101,11 +101,8 @@ pub const UDPServer = struct {
 
     pub fn queue_broadcast(server: *UDPServer, buf: []const u8) !void {
         std.log.info("queue_broadcast", .{});
-        var it = server.finger_table.valueIterator();
-        while (it.next()) |f| {
-            if (!f.is_zero())
-                try communication.enqueue_envelope(.{ .broadcast = buf }, .{ .id = f.id }, server);
-        }
+        const envelope = communication.build_envelope(.{ .broadcast = buf }, .{ .id = std.mem.zeroes(ID) }, server);
+        try server.job_queue.enqueue(.{ .broadcast = envelope });
     }
 
     pub fn send(server: *UDPServer, id: ID, buf: []const u8) !void {

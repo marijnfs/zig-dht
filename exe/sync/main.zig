@@ -19,11 +19,11 @@ const Messages = union(enum) {
 };
 
 fn direct_message_hook(buf: []const u8, src_id: dht.ID, src_address: net.Address) !void {
-    std.log.info("direct message {} {} {}", .{ dht.hex(buf), dht.hex(&src_id), src_address });
+    std.log.info("direct message hook {} {} {}", .{ dht.hex(buf), dht.hex(&src_id), src_address });
 }
 
 fn broadcast_hook(buf: []const u8, src_id: dht.ID, src_address: net.Address) !void {
-    std.log.info("broadcast {} {} {}", .{ dht.hex(buf), dht.hex(&src_id), src_address });
+    std.log.info("broadcast hook {} {} {}", .{ dht.hex(buf), dht.hex(&src_id), src_address });
 }
 
 pub fn main() !void {

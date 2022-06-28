@@ -108,6 +108,8 @@ pub const ServerJob = union(enum) {
                 std.log.info("broadcasting: {s}", .{broadcast_envelope});
                 var it = server.finger_table.valueIterator();
                 while (it.next()) |finger| {
+                    if (finger.is_zero())
+                        continue;
                     std.log.info("broadcast to finger: {s}", .{finger.address});
 
                     try queue.enqueue(.{ .send_message = .{ .target = .{ .address = finger.address }, .payload = .{ .envelope = broadcast_envelope } } });

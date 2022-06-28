@@ -78,7 +78,7 @@ pub const InboundMessage = struct {
     address: std.net.Address, //address of inbound connection (not per se the initiator of the message!)
 };
 
-pub fn enqueue_envelope(content: Content, target: Target, server: *udp_server.UDPServer) !void {
+pub fn build_envelope(content: Content, target: Target, server: *udp_server.UDPServer) index.communication_udp.Envelope {
     const envelope = switch (target) {
         .id => |id| Envelope{
             .source_id = server.id,
@@ -92,6 +92,11 @@ pub fn enqueue_envelope(content: Content, target: Target, server: *udp_server.UD
             .nonce = index.id.get_guid(),
         },
     };
+    return envelope;
+}
+
+pub fn enqueue_envelope(content: Content, target: Target, server: *udp_server.UDPServer) !void {
+    const envelope = build_envelope(content, target, server);
 
     try server.job_queue.enqueue(.{
         .send_message = .{
@@ -157,32 +162,29 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
                 const our_dist = id_.xor(server.id, search_id);
                 const other_dist = id_.xor(finger.id, search_id);
 
-                if (id_.less(our_dist, other_dist)) {
-                    // Return our apparent address as closest
-
+                if (finger.is_zero() or id_.less(our_dist, other_dist)) {
+                    // can't find any record, return self
                     const return_content: Content = .{ .found = .{ .id = server.id, .address = server.apparent_address } };
+                    std.log.info("Returning self {s}", .{server.apparent_address});
                     const outbound_message = try build_reply(return_content, envelope, server.id);
                     try server.job_queue.enqueue(.{ .send_message = outbound_message });
                 } else {
                     // route forward
                     try server.job_queue.enqueue(.{ .send_message = .{ .target = .{ .address = finger.address }, .payload = .{ .envelope = envelope } } });
                 }
-            } else {
-                // can't find any record, return self
-                const return_content: Content = .{ .found = .{ .id = server.id, .address = server.apparent_address } };
-                std.log.info("Returing {s}", .{server.apparent_address});
-                const outbound_message = try build_reply(return_content, envelope, server.id);
-                try server.job_queue.enqueue(.{ .send_message = outbound_message });
             }
         },
         .found => |found| {
-            std.log.info("found result: {s}", .{found});
+            std.log.info("found result: {s} {}", .{ found, found.address });
 
             const id = found.id;
             if (found.address) |addr| {
                 if (found.public) {
+                    std.log.info("update public: {} {}", .{ index.hex(&id), addr });
                     try server.public_finger_table.update_closest_finger(id, addr);
                 } else {
+                    std.log.info("update private: {} {}", .{ index.hex(&id), addr });
+
                     try server.finger_table.update_closest_finger(id, addr);
                 }
             } else {
