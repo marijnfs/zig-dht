@@ -23,7 +23,7 @@ pub fn JobQueue(comptime Job: type, comptime Context: type) type {
         pub fn enqueue(job_queue: *@This(), job: Job) !void {
             const job_ptr = try default.allocator.create(Job);
             job_ptr.* = job;
-            std.log.info("queuing job: {}\n", .{job});
+            std.log.debug("queuing job: {}\n", .{job});
             try job_queue.queue.push(job_ptr);
         }
 
@@ -36,7 +36,7 @@ pub fn JobQueue(comptime Job: type, comptime Context: type) type {
                 if (job_queue.queue.pop()) |job| {
                     std.log.debug("Work: {}", .{job});
                     job.work(job_queue, job_queue.context) catch |e| {
-                        std.log.info("Work Error: {}", .{e});
+                        std.log.warn("Work Error: {}", .{e});
                     };
                     default.allocator.destroy(job);
                 } else {

@@ -124,7 +124,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
 
     switch (content) {
         .broadcast => |broadcast| {
-            std.log.info("got broadcast: '{s}'", .{broadcast});
+            std.log.debug("got broadcast: '{s}'", .{broadcast});
             for (server.broadcast_hooks.items) |callback| {
                 try callback(broadcast, envelope.source_id, address);
             }
@@ -133,7 +133,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
             try server.job_queue.enqueue(.{ .broadcast = envelope });
         },
         .direct_message => |direct_message| {
-            std.log.info("got dm: '{s}'", .{direct_message});
+            std.log.debug("got dm: '{s}'", .{direct_message});
             for (server.direct_message_hooks.items) |callback| {
                 try callback(direct_message, envelope.source_id, address);
             }
@@ -154,7 +154,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
             // requester is trying to find a node closest to the search_id
             // We want to figure out if that's us (to our knowledge); if not we pass on the search
 
-            std.log.info("finding: {}", .{find});
+            std.log.debug("finding: {}", .{find});
 
             const search_id = find.id;
 
@@ -165,7 +165,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
                 if (finger.is_zero() or id_.less(our_dist, other_dist)) {
                     // can't find any record, return self
                     const return_content: Content = .{ .found = .{ .id = server.id, .address = server.apparent_address } };
-                    std.log.info("Returning self {s}", .{server.apparent_address});
+                    std.log.debug("Returning self {s}", .{server.apparent_address});
                     const outbound_message = try build_reply(return_content, envelope, server.id);
                     try server.job_queue.enqueue(.{ .send_message = outbound_message });
                 } else {
@@ -175,49 +175,49 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
             }
         },
         .found => |found| {
-            std.log.info("found result: {s} {}", .{ found, found.address });
+            std.log.debug("found result: {s} {}", .{ found, found.address });
 
             const id = found.id;
             if (found.address) |addr| {
                 if (found.public) {
-                    std.log.info("update public: {} {}", .{ index.hex(&id), addr });
+                    std.log.debug("update public: {} {}", .{ index.hex(&id), addr });
                     try server.public_finger_table.update_closest_finger(id, addr);
                 } else {
-                    std.log.info("update private: {} {}", .{ index.hex(&id), addr });
+                    std.log.debug("update private: {} {}", .{ index.hex(&id), addr });
 
                     try server.finger_table.update_closest_finger(id, addr);
                 }
             } else {
-                std.log.info("found, but got no address", .{});
+                std.log.debug("found, but got no address", .{});
             }
         },
         .ping => |ping| {
-            std.log.info("got ping: {}", .{ping});
+            std.log.debug("got ping: {}", .{ping});
 
             // Resolve the possible connection address
 
             try server.routing.update_ip_id_pair(envelope.source_id, address);
 
-            std.log.info("got ping from addr: {any}", .{address});
-            std.log.info("source id seems: {}", .{index.hex(&envelope.source_id)});
+            std.log.debug("got ping from addr: {any}", .{address});
+            std.log.debug("source id seems: {}", .{index.hex(&envelope.source_id)});
 
             const return_content: Content = .{ .pong = .{ .apparent_ip = address, .public = server.public } };
             const outbound_message = try build_reply(return_content, envelope, server.id);
 
-            std.log.info("reply env: {any}", .{outbound_message.payload});
+            std.log.debug("reply env: {any}", .{outbound_message.payload});
 
             try server.job_queue.enqueue(.{ .send_message = outbound_message });
         },
         .pong => |pong| {
-            std.log.info("got pong: {} {} {s}", .{ pong, index.hex(&envelope.source_id), address });
+            std.log.debug("got pong: {} {} {s}", .{ pong, index.hex(&envelope.source_id), address });
             try server.routing.update_ip_id_pair(envelope.source_id, address);
             var our_ip = pong.apparent_ip;
             // our_ip.setPort(server.address.getPort()); // set the port so the address becomes our likely external connection ip
             server.apparent_address = our_ip;
-            std.log.info("apparent_address: {}", .{server.apparent_address});
+            std.log.debug("apparent_address: {}", .{server.apparent_address});
         },
         .send_known_ips => |known_ips| {
-            std.log.info("adding n 'known' addresses: {}", .{known_ips.len});
+            std.log.debug("adding n 'known' addresses: {}", .{known_ips.len});
 
             defer default.allocator.free(known_ips);
             for (known_ips) |addr| {
@@ -261,7 +261,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
             const initiator = punch_request.initiator;
 
             if (server.punch_map.get(nonce)) |stored_address| {
-                std.log.info("Found a punch between {} {}", .{ address, stored_address });
+                std.log.debug("Found a punch between {} {}", .{ address, stored_address });
                 if (initiator) {
                     try enqueue_envelope(.{
                         .punch_reply = .{

@@ -49,7 +49,6 @@ pub fn less(id1: ID, id2: ID) bool {
 pub fn rand_id() ID {
     var id: ID = undefined;
     index.rng.random().bytes(&id);
-    std.log.info("randid: {any}", .{id});
     return id;
 }
 

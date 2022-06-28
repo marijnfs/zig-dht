@@ -45,7 +45,7 @@ pub const default = struct {
 };
 
 pub fn init() !void {
-    std.log.info("index.init", .{});
+    std.log.debug("index.init", .{});
 
     try seed_rng();
     id.init();
@@ -61,5 +61,5 @@ pub fn seed_rng() !void {
 test "rng" {
     const random = std.crypto.random;
     const seed = random.int(u64);
-    std.log.info("{}", .{seed});
+    std.log.debug("{}", .{seed});
 }

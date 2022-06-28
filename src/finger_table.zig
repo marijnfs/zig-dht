@@ -102,10 +102,10 @@ pub const FingerTable = struct {
 
     fn init_finger_table(table: *FingerTable, n_fingers: usize) !void {
         var i: usize = 0;
-        std.log.info("finger table init, id is: {}", .{index.hex(&table.id)});
+        std.log.debug("finger table init, id is: {}", .{index.hex(&table.id)});
         while (i < n_fingers) : (i += 1) {
             const id = id_.xor_bitpos(table.id, i);
-            std.log.info("id[{}]: {}", .{ i, index.hex(&id) });
+            std.log.debug("id[{}]: {}", .{ i, index.hex(&id) });
             if (!table.fingers.contains(id))
                 try table.fingers.put(id, .{});
         }

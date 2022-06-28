@@ -13,7 +13,7 @@ pub const Bot = union(enum) {
 pub fn step(bot: Bot) void {
     switch (bot) {
         .iterate => {
-            std.log.info("iterate", .{});
+            std.log.debug("iterate", .{});
         },
     }
 }

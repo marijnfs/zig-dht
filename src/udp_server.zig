@@ -100,7 +100,7 @@ pub const UDPServer = struct {
     }
 
     pub fn queue_broadcast(server: *UDPServer, buf: []const u8) !void {
-        std.log.info("queue_broadcast", .{});
+        std.log.debug("queue_broadcast", .{});
         const envelope = communication.build_envelope(.{ .broadcast = buf }, .{ .id = std.mem.zeroes(ID) }, server);
         try server.job_queue.enqueue(.{ .broadcast = envelope });
     }

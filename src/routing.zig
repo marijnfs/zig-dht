@@ -103,7 +103,7 @@ pub const RoutingTable = struct {
     }
 
     pub fn add_address_seen(table: *RoutingTable, addr: std.net.Address) !void {
-        std.log.info("saw ip: {}", .{addr});
+        std.log.debug("saw ip: {}", .{addr});
         const addr_string = try std.fmt.allocPrint(default.allocator, "{}", .{addr});
         const hash = utils.calculate_hash(addr_string);
         try table.addresses_seen.put(hash, addr);
@@ -137,7 +137,7 @@ pub const RoutingTable = struct {
             record.last_connect = time.milliTimestamp();
             if (record.red_flags > 1) //drop message
             {
-                std.log.info("Dropping red-flag message, flags: {}", .{record.red_flags});
+                std.log.debug("Dropping red-flag message, flags: {}", .{record.red_flags});
                 return false;
             }
         } else {
@@ -165,7 +165,7 @@ test "Basics" {
     var iter = routing.iter_finger_table();
     while (iter.next()) |kv| {
         count += 1;
-        std.log.info("{}", .{kv});
+        std.log.debug("{}", .{kv});
     }
     try std.testing.expect(count == 8);
 }

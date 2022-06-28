@@ -18,7 +18,7 @@ pub fn calculate_hash(data: []const u8) ID {
 }
 
 pub fn random_selection(K: usize, N: usize) ![]usize {
-    std.log.info("random selection:{} {}", .{ K, N });
+    std.log.debug("random selection:{} {}", .{ K, N });
     var ks = try default.allocator.alloc(usize, if (K < N) K else N);
     var ns = try default.allocator.alloc(usize, N);
     defer default.allocator.free(ns);
@@ -31,7 +31,7 @@ pub fn random_selection(K: usize, N: usize) ![]usize {
     var k: usize = 0;
     while (k < ks.len) : (k += 1) {
         ks[k] = ns[k];
-        std.log.info("random k: {}, {}", .{ k, ns[k] });
+        std.log.debug("random k: {}, {}", .{ k, ns[k] });
     }
     return ks;
 }

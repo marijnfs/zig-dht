@@ -60,15 +60,15 @@ pub const Database = struct {
     // but that is expected behaviour (consistency check should not remove the file / maybe adds its under it's direct hash as well)
     pub fn put_persistent(db: *Database, id: ID, data: Blob) !void {
         var path = try idToFilepath(id);
-        std.log.info("put_persistent, {s}", .{path});
+        std.log.debug("put_persistent, {s}", .{path});
 
         // Make dir to be sure
         var dir_path = try idToDirpath(id);
-        std.log.info("dir path, {s}", .{dir_path});
+        std.log.debug("dir path, {s}", .{dir_path});
 
         db.store_dir.makeDir(dir_path) catch |err| switch (err) {
             error.PathAlreadyExists => {
-                std.log.info("exists", .{});
+                std.log.debug("exists", .{});
             },
             else => return err,
         };
@@ -128,13 +128,13 @@ test "test basics" {
 
     try std.testing.expectEqualSlices(u8, &data_id, &utils.calculate_hash(data));
 
-    std.log.info("store id {s}", .{utils.hex(&data_id)});
+    std.log.debug("store id {s}", .{utils.hex(&data_id)});
 
     var loaded = try database.get(data_id);
 
-    std.log.info("loaded: {s}", .{loaded});
+    std.log.debug("loaded: {s}", .{loaded});
     _ = database.store.remove(data_id);
-    std.log.info("removing from memory: {s}", .{utils.hex(&data_id)});
+    std.log.debug("removing from memory: {s}", .{utils.hex(&data_id)});
 
     var loaded_file = try database.get(data_id);
     try std.testing.expectEqualSlices(u8, loaded, loaded_file);
