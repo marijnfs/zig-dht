@@ -73,13 +73,11 @@ pub const ServerJob = union(enum) {
                         }
 
                         // routing
-                        if (server.finger_table.get_closest_finger(id)) |finger| {
-                            if (!finger.is_zero()) {
-                                try server.socket.sendTo(finger.address, data);
-                            } else {
-                                //failed to find any valid record
-                                std.log.debug("Failed to find any finger for id {}", .{index.hex(&id)});
-                            }
+                        if (server.finger_table.get_closest_active_finger(id)) |finger| {
+                            try server.socket.sendTo(finger.address, data);
+                        } else {
+                            //failed to find any valid record
+                            std.log.debug("Failed to find any finger for id {}", .{index.hex(&id)});
                         }
                     },
                 }

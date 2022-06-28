@@ -12,7 +12,7 @@ const Finger = struct {
     id: ID = std.mem.zeroes(ID),
     address: std.net.Address = undefined,
 
-    pub fn is_zero(finger: *Finger) bool {
+    pub fn is_zero(finger: *const Finger) bool {
         return id_.is_zero(finger.id);
     }
 };
@@ -48,16 +48,37 @@ pub const FingerTable = struct {
         return table.fingers.getPtr(closest_id);
     }
 
+    pub fn get_closest_active_finger(table: *FingerTable, id: ID) ?*Finger {
+        var it = table.iterator();
+        var closest_finger: *Finger = undefined;
+        var closest_distance = std.mem.zeroes(ID);
+        while (it.next()) |kv| {
+            const key = kv.key_ptr.*;
+            const finger = kv.value_ptr;
+            if (finger.is_zero())
+                continue;
+            const distance = id_.xor(id, key);
+            if (id_.is_zero(closest_distance) or id_.less(distance, closest_distance)) {
+                closest_distance = distance;
+                closest_finger = finger;
+            }
+        }
+
+        if (id_.is_zero(closest_distance))
+            return null;
+        return closest_finger;
+    }
+
     pub fn get_closest_key(table: *FingerTable, id: ID) !ID {
         var it = table.fingers.keyIterator();
 
-        var closest = std.mem.zeroes(ID);
+        var closest_distance = std.mem.zeroes(ID);
         var closest_id = std.mem.zeroes(ID);
 
         while (it.next()) |key| {
             const distance = id_.xor(id, key.*);
-            if (id_.is_zero(closest) or id_.less(distance, closest)) {
-                closest = distance;
+            if (id_.is_zero(closest_distance) or id_.less(distance, closest_distance)) {
+                closest_distance = distance;
                 closest_id = key.*;
             }
         }
