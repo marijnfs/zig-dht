@@ -4,12 +4,12 @@ const std = @import("std");
 const index = @import("index.zig");
 const default = index.default;
 const utils = index.utils;
-const communication = index.communication_udp;
+const communication = index.communication;
 const id_ = index.id;
-const UDPServer = index.UDPServer;
+const Server = index.Server;
 const ID = index.ID;
 
-pub fn expand_connections(server: *UDPServer) !void {
+pub fn expand_connections(server: *Server) !void {
     //TODO: Make sure n_active_connections keeps 'last connect' into account
     // Needs heartbeat
     std.log.debug("expanding connections {}", .{server.finger_table.n_active_connections()});
@@ -63,7 +63,7 @@ pub fn expand_connections(server: *UDPServer) !void {
     // }
 }
 
-pub fn sync_finger_table(server: *UDPServer) !void {
+pub fn sync_finger_table(server: *Server) !void {
     std.log.info("sync finger table", .{});
 
     var it = server.finger_table.iterator();
@@ -79,7 +79,7 @@ pub fn sync_finger_table(server: *UDPServer) !void {
     }
 }
 
-pub fn refresh_finger_table(server: *UDPServer) !void {
+pub fn refresh_finger_table(server: *Server) !void {
     std.log.info("refresh finger table", .{});
     {
         var it = server.finger_table.keyIterator();

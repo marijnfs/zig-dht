@@ -7,16 +7,16 @@ const net = std.net;
 
 const index = @import("index.zig");
 const default = index.default;
-const communication = index.communication_udp;
+const communication = index.communication;
 const id_ = index.id;
 const utils = index.utils;
 const serial = index.serial;
 const hash = index.hash;
 const model = index.model;
 
-const UDPServer = index.UDPServer;
+const Server = index.Server;
 
-const JobQueue = index.JobQueue(ServerJob, *UDPServer);
+const JobQueue = index.JobQueue(ServerJob, *Server);
 
 pub const ServerJob = union(enum) {
     connect: std.net.Address,
@@ -24,10 +24,10 @@ pub const ServerJob = union(enum) {
     inbound_message: index.socket.UDPIncoming,
     process_message: communication.InboundMessage,
     broadcast: communication.Envelope,
-    callback: fn (*UDPServer) anyerror!void,
+    callback: fn (*Server) anyerror!void,
     stop: bool,
 
-    pub fn work(self: *ServerJob, queue: *JobQueue, server: *UDPServer) !void {
+    pub fn work(self: *ServerJob, queue: *JobQueue, server: *Server) !void {
         switch (self.*) {
             .connect => |address| {
                 if (server.apparent_address) |apparent_address| {

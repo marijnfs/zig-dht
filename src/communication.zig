@@ -7,7 +7,8 @@ const utils = index.utils;
 const c = index.c;
 const id_ = index.id;
 const ID = index.ID;
-const udp_server = index.udp_server;
+const Server = index.server.Server;
+
 // Message contents
 
 pub const Content = union(enum) {
@@ -78,7 +79,7 @@ pub const InboundMessage = struct {
     address: std.net.Address, //address of inbound connection (not per se the initiator of the message!)
 };
 
-pub fn build_envelope(content: Content, target: Target, server: *udp_server.UDPServer) index.communication_udp.Envelope {
+pub fn build_envelope(content: Content, target: Target, server: *Server) index.communication.Envelope {
     const envelope = switch (target) {
         .id => |id| Envelope{
             .source_id = server.id,
@@ -95,7 +96,7 @@ pub fn build_envelope(content: Content, target: Target, server: *udp_server.UDPS
     return envelope;
 }
 
-pub fn enqueue_envelope(content: Content, target: Target, server: *udp_server.UDPServer) !void {
+pub fn enqueue_envelope(content: Content, target: Target, server: *Server) !void {
     const envelope = build_envelope(content, target, server);
 
     try server.job_queue.enqueue(.{
@@ -119,7 +120,7 @@ fn build_reply(content: Content, envelope: Envelope, server_id: ID) !OutboundMes
 }
 
 /// >>>>>>>
-pub fn process_message(envelope: Envelope, address: std.net.Address, server: *udp_server.UDPServer) !void {
+pub fn process_message(envelope: Envelope, address: std.net.Address, server: *Server) !void {
     const content = envelope.content;
 
     switch (content) {
@@ -290,7 +291,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *ud
 }
 
 test "message" {
-    const envelope = index.communication_udp.Envelope{
+    const envelope = index.communication.Envelope{
         .content = .{
             .broadcast = "test",
         },
@@ -298,7 +299,7 @@ test "message" {
 
     const slice = try index.serial.serialise(envelope);
     var tmp_slice = slice;
-    var x_2 = try index.serial.deserialise(index.communication_udp.Envelope, &tmp_slice);
+    var x_2 = try index.serial.deserialise(index.communication.Envelope, &tmp_slice);
     const slice2 = try index.serial.serialise(x_2);
     try std.testing.expect(std.mem.eql(u8, slice2, slice));
 }

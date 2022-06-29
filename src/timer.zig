@@ -4,8 +4,8 @@ const index = @import("index.zig");
 const default = index.default;
 
 const ServerJob = index.server_job.ServerJob;
-const UDPServer = index.UDPServer;
-const Timer = struct { alarm: i64 = 0, callback: fn (*UDPServer) anyerror!void, delay: i64 = 0 };
+const Server = index.Server;
+const Timer = struct { alarm: i64 = 0, callback: fn (*Server) anyerror!void, delay: i64 = 0 };
 
 fn compare_timer(_: void, t1: Timer, t2: Timer) std.math.Order {
     if (t1.alarm < t2.alarm) return .lt else return .gt;
@@ -16,9 +16,9 @@ pub const TimerThread = struct {
 
     // var timer_thread: std.Thread = undefined;
     timer_frame: @Frame(timer_thread_function) = undefined,
-    work_queue: *index.JobQueue(ServerJob, *index.UDPServer),
+    work_queue: *index.JobQueue(ServerJob, *index.Server),
 
-    pub fn init(work_queue: *index.JobQueue(ServerJob, *index.UDPServer)) !*TimerThread {
+    pub fn init(work_queue: *index.JobQueue(ServerJob, *index.Server)) !*TimerThread {
         var timer_thread = try default.allocator.create(TimerThread);
         timer_thread.* = .{
             .queue = std.PriorityQueue(Timer, void, compare_timer).init(default.allocator, .{}),
@@ -27,7 +27,7 @@ pub const TimerThread = struct {
         return timer_thread;
     }
 
-    pub fn add_timer(timer_thread: *TimerThread, delay: i64, callback: fn (*UDPServer) anyerror!void, repeat: bool) !void {
+    pub fn add_timer(timer_thread: *TimerThread, delay: i64, callback: fn (*Server) anyerror!void, repeat: bool) !void {
         try timer_thread.queue.add(Timer{ .alarm = std.time.milliTimestamp() + delay, .delay = if (repeat) delay else 0, .callback = callback });
     }
 

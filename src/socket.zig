@@ -11,12 +11,12 @@ pub const UDPIncoming = struct {
     from: net.Address,
 };
 
-pub const UDPSocket = struct {
+pub const Socket = struct {
     fd: os.socket_t = 0,
     address: net.Address,
 
-    pub fn init(address: net.Address) !*UDPSocket {
-        var socket = try default.allocator.create(UDPSocket);
+    pub fn init(address: net.Address) !*Socket {
+        var socket = try default.allocator.create(Socket);
 
         const sock_flags = os.SOCK.DGRAM | os.SOCK.CLOEXEC | os.SOCK.NONBLOCK;
 
@@ -29,16 +29,16 @@ pub const UDPSocket = struct {
         return socket;
     }
 
-    pub fn deinit(socket: *UDPSocket) void {
+    pub fn deinit(socket: *Socket) void {
         os.closeSocket(socket.fd);
         default.allocator.destroy(socket);
     }
 
-    pub fn bind(socket: *UDPSocket) !void {
+    pub fn bind(socket: *Socket) !void {
         try os.bind(socket.fd, &socket.address.any, socket.address.getOsSockLen());
     }
 
-    pub fn sendTo(socket: *UDPSocket, address: net.Address, buf: []const u8) !void {
+    pub fn sendTo(socket: *Socket, address: net.Address, buf: []const u8) !void {
         if (std.io.is_async) {
             _ = try std.event.Loop.instance.?.sendto(socket.fd, buf, os.MSG.NOSIGNAL, &address.any, address.getOsSockLen());
         } else {
@@ -46,7 +46,7 @@ pub const UDPSocket = struct {
         }
     }
 
-    pub fn recvFrom(socket: *UDPSocket) !UDPIncoming {
+    pub fn recvFrom(socket: *Socket) !UDPIncoming {
         var flags: u32 = 0;
         var src_sockaddr: os.sockaddr = undefined;
         var addrlen: os.socklen_t = @sizeOf(os.sockaddr);
@@ -62,7 +62,7 @@ pub const UDPSocket = struct {
         return UDPIncoming{ .buf = try default.allocator.dupe(u8, buf[0..rlen]), .from = src_address };
     }
 
-    pub fn getAddress(socket: *UDPSocket) !net.Address {
+    pub fn getAddress(socket: *Socket) !net.Address {
         var addr: os.sockaddr = undefined;
         var addrlen: os.socklen_t = @sizeOf(os.sockaddr);
         try os.getsockname(socket.fd, &addr, &addrlen);
@@ -72,12 +72,12 @@ pub const UDPSocket = struct {
 
 test "just init" {
     const addr = net.Address.initIp4([_]u8{ 0, 0, 0, 0 }, 4040);
-    var socket = try UDPSocket.init(addr);
+    var socket = try Socket.init(addr);
     defer socket.deinit();
     try socket.bind();
 
     const other_addr = net.Address.initIp4([_]u8{ 0, 0, 0, 0 }, 4041);
-    var other_socket = try UDPSocket.init(other_addr);
+    var other_socket = try Socket.init(other_addr);
     try other_socket.bind();
     defer other_socket.deinit();
 

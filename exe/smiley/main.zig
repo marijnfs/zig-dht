@@ -13,7 +13,7 @@ const staging = dht.staging;
 const db = dht.db;
 
 const c = @import("c.zig");
-const UDPServer = dht.UDPServer;
+const Server = dht.Server;
 const ID = dht.ID;
 const JobQueue = dht.JobQueue;
 const ServerJob = dht.ServerJob;
@@ -76,7 +76,7 @@ pub fn main() !void {
         // const port = try std.fmt.parseInt(u16, args[3], 0);
 
         const address = net.Address.initIp4([_]u8{ 0, 0, 0, 0 }, 4040);
-        const server = try UDPServer.init(address);
+        const server = try Server.init(address);
         break :b server;
     };
 

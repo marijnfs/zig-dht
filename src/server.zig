@@ -4,26 +4,26 @@ const time = std.time;
 
 const index = @import("index.zig");
 const default = index.default;
-const communication = index.communication_udp;
+const communication = index.communication;
 const utils = index.utils;
 const serial = index.serial;
 const hash = index.hash;
 const model = index.model;
 
-const UDPSocket = index.UDPSocket;
+const Socket = index.Socket;
 const Hash = index.Hash;
 const ServerJob = index.ServerJob;
 
 const id_ = index.id;
 const ID = index.ID;
 
-const JobQueue = index.JobQueue(ServerJob, *UDPServer);
+const JobQueue = index.JobQueue(ServerJob, *Server);
 
-pub const UDPServer = struct {
+pub const Server = struct {
     const HookType = fn ([]const u8, ID, net.Address) anyerror!void;
     address: net.Address,
     apparent_address: ?net.Address = null,
-    socket: *UDPSocket,
+    socket: *Socket,
     job_queue: *JobQueue,
     id: ID,
     frame: @Frame(accept_loop) = undefined,
@@ -37,11 +37,11 @@ pub const UDPServer = struct {
 
     punch_map: std.AutoHashMap(ID, net.Address),
 
-    pub fn init(address: net.Address, id: ID) !*UDPServer {
-        var server = try default.allocator.create(UDPServer);
+    pub fn init(address: net.Address, id: ID) !*Server {
+        var server = try default.allocator.create(Server);
         server.* = .{
             .address = address,
-            .socket = try UDPSocket.init(address),
+            .socket = try Socket.init(address),
             .job_queue = try JobQueue.init(server),
             .id = id,
             .routing = try index.routing.RoutingTable.init(id), //record of all ID <> Address pair seen, with some stats
@@ -54,13 +54,13 @@ pub const UDPServer = struct {
         return server;
     }
 
-    pub fn deinit(server: *UDPServer) void {
+    pub fn deinit(server: *Server) void {
         server.socket.deinit();
         default.allocator.destroy(server);
     }
 
-    pub fn start(server: *UDPServer) !void {
-        std.log.info("Starting UDP Server", .{});
+    pub fn start(server: *Server) !void {
+        std.log.info("Starting  Server", .{});
 
         try server.socket.bind();
         server.address = try server.socket.getAddress();
@@ -68,19 +68,19 @@ pub const UDPServer = struct {
         server.frame = async server.accept_loop();
     }
 
-    pub fn wait(server: *UDPServer) !void {
+    pub fn wait(server: *Server) !void {
         try await server.frame;
     }
 
-    pub fn add_broadcast_hook(server: *UDPServer, hook: HookType) !void {
+    pub fn add_broadcast_hook(server: *Server, hook: HookType) !void {
         try server.broadcast_hooks.append(hook);
     }
 
-    pub fn add_direct_message_hook(server: *UDPServer, hook: HookType) !void {
+    pub fn add_direct_message_hook(server: *Server, hook: HookType) !void {
         try server.direct_message_hooks.append(hook);
     }
 
-    fn accept_loop(server: *UDPServer) !void {
+    fn accept_loop(server: *Server) !void {
         while (true) {
             const msg = try server.socket.recvFrom();
 
@@ -95,17 +95,17 @@ pub const UDPServer = struct {
         }
     }
 
-    pub fn queue_direct(server: *UDPServer, id: ID, buf: []const u8) !void {
+    pub fn queue_direct(server: *Server, id: ID, buf: []const u8) !void {
         communication.enqueue_envelope(.{ .direct_message = buf }, .{ .id = id }, server);
     }
 
-    pub fn queue_broadcast(server: *UDPServer, buf: []const u8) !void {
+    pub fn queue_broadcast(server: *Server, buf: []const u8) !void {
         std.log.debug("queue_broadcast", .{});
         const envelope = communication.build_envelope(.{ .broadcast = buf }, .{ .id = std.mem.zeroes(ID) }, server);
         try server.job_queue.enqueue(.{ .broadcast = envelope });
     }
 
-    pub fn send(server: *UDPServer, id: ID, buf: []const u8) !void {
+    pub fn send(server: *Server, id: ID, buf: []const u8) !void {
         if (server.id_index.get(id)) |record| {
             server.socket.sendTo(record.address, buf);
         } else {
@@ -116,7 +116,7 @@ pub const UDPServer = struct {
 
 test "Simple Server Test" {
     const addr = net.Address.initIp4([_]u8{ 0, 0, 0, 0 }, 4040);
-    var server = try UDPServer.init(addr);
+    var server = try Server.init(addr);
     defer server.deinit();
 
     // server.start();

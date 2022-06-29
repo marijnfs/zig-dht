@@ -6,7 +6,6 @@ const std = @import("std");
 const net = std.net;
 const dht = @import("dht");
 const default = dht.default;
-const udp_server = dht.udp_server;
 const socket = dht.socket;
 const timer_functions = dht.timer_functions;
 
@@ -31,8 +30,8 @@ pub fn main() !void {
     const options = try args.parseForCurrentProcess(struct {
         ip: ?[]const u8,
         port: ?u16,
-        ip_remote: ?[]const u8 = null,
-        port_remote: ?u16 = null,
+        remote_ip: ?[]const u8 = null,
+        remote_port: ?u16 = null,
     }, std.heap.page_allocator, .print);
     if (options.options.ip == null or options.options.port == null) {
         std.log.warn("Ip not defined", .{});
@@ -42,11 +41,11 @@ pub fn main() !void {
 
     const address = try std.net.Address.parseIp(options.options.ip.?, options.options.port.?);
     const id = dht.id.rand_id();
-    var server = try udp_server.UDPServer.init(address, id);
+    var server = try dht.server.Server.init(address, id);
     defer server.deinit();
 
-    if (options.options.ip_remote != null and options.options.port_remote != null) {
-        const address_remote = try std.net.Address.parseIp(options.options.ip_remote.?, options.options.port_remote.?);
+    if (options.options.remote_ip != null and options.options.remote_port != null) {
+        const address_remote = try std.net.Address.parseIp(options.options.remote_ip.?, options.options.remote_port.?);
         try server.routing.add_address_seen(address_remote);
         try server.job_queue.enqueue(.{ .connect = address_remote });
     }

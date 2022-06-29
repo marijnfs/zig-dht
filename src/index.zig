@@ -18,8 +18,8 @@ pub const hash = @import("hash.zig");
 pub const id = @import("id.zig");
 pub const bot = @import("bot.zig");
 pub const socket = @import("socket.zig");
-pub const communication_udp = @import("communication_udp.zig");
-pub const udp_server = @import("udp_server.zig");
+pub const communication = @import("communication.zig");
+pub const server = @import("server.zig");
 
 // Quick Definitions
 pub const ID = id.ID;
@@ -27,8 +27,8 @@ pub const Hash = id.Hash;
 pub const JobQueue = job_queue.JobQueue;
 pub const AtomicQueue = @import("queue.zig").AtomicQueue;
 pub const ServerJob = server_job.ServerJob;
-pub const UDPSocket = socket.UDPSocket;
-pub const UDPServer = udp_server.UDPServer;
+pub const Socket = socket.Socket;
+pub const Server = server.Server;
 
 pub var gpa = std.heap.GeneralPurposeAllocator(.{}){};
 
