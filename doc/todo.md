@@ -1,5 +1,17 @@
 # TODO:
 
+> Good first apps:
+  > Library of Alexandria (Mouseion)
+    > All public books, there must be a collection somewhere
+    > The goal was to make copies of all written text over the world
+      > Users will be able to add, perhaps in a part separated from the library directly.
+  > Wikipedia copy
+  > Public Square
+  > Common AI
+    > AI for the commons
+    > Could be a language model on e.g. Alexandria
+    > Could also simply be a paper sharing place initially.
+  
 > In bitcoind, there is a:
   > request queue
   > requested queue
@@ -7,6 +19,10 @@
   > there are a few datastructures, like latest block, and blocks self-verified but not chained yet, etc
 > They only sync from one node, if it stops things get reset and a we start again
 
+> ID from recieved message is now used to store in routing
+  > This is actually not true of course when it's a routed message! 
+  > We need a small layer or append for every message where the actual send id is added
+  > This could also be used for authentication?
 
 > Most finger table issues resolved:
   > todo, n_active_connections needs to query routing for active connections
