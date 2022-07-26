@@ -5,6 +5,7 @@ const index = @import("index.zig");
 const default = index.default;
 const utils = index.utils;
 const id_ = index.id;
+const hex = index.hex;
 
 const ID = index.ID;
 const Hash = index.Hash;
@@ -16,8 +17,11 @@ const Record = struct {
     last_connect: i64 = 0,
 
     fn active(record: *Record, milliThreshold: usize) bool {
-        std.log.info("time dist: {} {}", .{ time.milliTimestamp() - record.last_connect, milliThreshold });
         return time.milliTimestamp() - record.last_connect < milliThreshold;
+    }
+
+    pub fn format(record: *const Record, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+        try writer.print("Record, id:{}, addr: {}, last connect: {} ", .{ index.hex(&record.id), record.address, record.last_connect });
     }
 };
 
@@ -49,19 +53,20 @@ pub const RoutingTable = struct {
 
     pub fn get_closest_active_record(table: *RoutingTable, id: ID) ?Record {
         var closest_record: ?Record = null;
-
-        var closest = std.mem.zeroes(ID);
+        var closest_distance = id_.ones();
 
         for (table.records.items) |record| {
-            if (!record.active(20000))
+            if (!record.active(20000)) {
                 continue;
+            }
             const distance = id_.xor(id, record.id);
-            if (id_.less(distance, closest)) {
-                closest = distance;
+
+            if (id_.less(distance, closest_distance)) {
+                closest_distance = distance;
                 closest_record = record.*;
             }
         }
-        if (id_.is_zero(closest))
+        if (id_.is_zero(closest_distance))
             return null;
         return closest_record;
     }

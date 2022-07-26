@@ -59,3 +59,13 @@ pub fn is_zero(id: ID) bool {
 pub fn is_equal(id: ID, id2: ID) bool {
     return std.mem.eql(u8, &id, &id2);
 }
+
+pub fn ones() ID {
+    var id: ID = undefined;
+    std.mem.set(u8, &id, 255);
+    return id;
+}
+
+pub fn is_ones(id: ID) bool {
+    return std.mem.eql(u8, &id, &ones());
+}

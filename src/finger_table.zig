@@ -51,20 +51,20 @@ pub const FingerTable = struct {
     pub fn get_closest_active_finger(table: *FingerTable, id: ID) ?*Finger {
         var it = table.iterator();
         var closest_finger: *Finger = undefined;
-        var closest_distance = std.mem.zeroes(ID);
+        var closest_distance = id_.ones();
         while (it.next()) |kv| {
             const key = kv.key_ptr.*;
             const finger = kv.value_ptr;
             if (finger.is_zero())
                 continue;
             const distance = id_.xor(id, key);
-            if (id_.is_zero(closest_distance) or id_.less(distance, closest_distance)) {
+            if (id_.less(distance, closest_distance)) {
                 closest_distance = distance;
                 closest_finger = finger;
             }
         }
 
-        if (id_.is_zero(closest_distance))
+        if (id_.is_ones(closest_distance))
             return null;
         return closest_finger;
     }
@@ -72,18 +72,18 @@ pub const FingerTable = struct {
     pub fn get_closest_key(table: *FingerTable, id: ID) !ID {
         var it = table.fingers.keyIterator();
 
-        var closest_distance = std.mem.zeroes(ID);
+        var closest_distance = id_.ones();
         var closest_id = std.mem.zeroes(ID);
 
         while (it.next()) |key| {
             const distance = id_.xor(id, key.*);
-            if (id_.is_zero(closest_distance) or id_.less(distance, closest_distance)) {
+            if (id_.less(distance, closest_distance)) {
                 closest_distance = distance;
                 closest_id = key.*;
             }
         }
 
-        if (id_.is_zero(closest_id))
+        if (id_.is_ones(closest_id))
             return error.NoClosestIdFound;
         return closest_id;
     }

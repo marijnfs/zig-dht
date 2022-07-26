@@ -30,10 +30,10 @@ pub fn sync_finger_table_with_routing(server: *Server) !void {
     while (it.next()) |finger| {
         const id = finger.key_ptr.*;
         const node = finger.value_ptr;
+
         if (server.routing.get_closest_active_record(id)) |*record| {
             node.id = record.id;
             node.address = record.address;
-            std.log.debug("Setting: bid{}, id:{}, addr:{}", .{ hex(&id), hex(&node.id), node.address });
         }
     }
 }

@@ -1,5 +1,5 @@
 pub const io_mode = .evented; // use event loop
-// pub const log_level: std.log.Level = .info;
+pub const log_level: std.log.Level = .info;
 
 const args = @import("args");
 const std = @import("std");
