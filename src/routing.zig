@@ -14,6 +14,11 @@ const Record = struct {
     address: std.net.Address = undefined,
     red_flags: usize = 0,
     last_connect: i64 = 0,
+
+    fn active(record: *Record, milliThreshold: usize) bool {
+        std.log.info("time dist: {} {}", .{ time.milliTimestamp() - record.last_connect, milliThreshold });
+        return time.milliTimestamp() - record.last_connect < milliThreshold;
+    }
 };
 
 pub const RoutingTable = struct {
@@ -42,19 +47,22 @@ pub const RoutingTable = struct {
         table.addresses_seen.deinit();
     }
 
-    pub fn get_closest_record(table: *RoutingTable, id: ID) ?Record {
+    pub fn get_closest_active_record(table: *RoutingTable, id: ID) ?Record {
         var closest_record: ?Record = null;
 
         var closest = std.mem.zeroes(ID);
 
         for (table.records.items) |record| {
+            if (!record.active(20000))
+                continue;
             const distance = id_.xor(id, record.id);
             if (id_.less(distance, closest)) {
                 closest = distance;
                 closest_record = record.*;
             }
         }
-
+        if (id_.is_zero(closest))
+            return null;
         return closest_record;
     }
 
@@ -70,24 +78,24 @@ pub const RoutingTable = struct {
     pub fn update_ip_id_pair(table: *RoutingTable, id: ID, addr: std.net.Address) !void {
         const ip_string = try std.fmt.allocPrint(default.allocator, "{}", .{addr});
 
-        if (table.ip_index.get(ip_string)) |record| {
-            record.id = id;
+        var record = b: {
+            if (table.ip_index.get(ip_string)) |record| {
+                break :b record;
+            } else {
+                var record = try default.allocator.create(Record);
+                try table.records.append(record);
+                break :b record;
+            }
+        };
 
-            try table.id_index.put(id, record);
-            try table.ip_index.put(ip_string, record);
-        } else {
-            // create new record
-            var record = try default.allocator.create(Record);
-            record.* = .{
-                .id = id,
-                .address = addr,
-                .last_connect = time.milliTimestamp(),
-            };
-            try table.records.append(record);
+        record.* = .{
+            .id = id,
+            .address = addr,
+            .last_connect = time.milliTimestamp(),
+        };
 
-            try table.id_index.put(id, record);
-            try table.ip_index.put(ip_string, record);
-        }
+        try table.id_index.put(id, record);
+        try table.ip_index.put(ip_string, record);
     }
 
     pub fn get_addresses_seen(table: *RoutingTable) ![]std.net.Address {

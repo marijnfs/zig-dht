@@ -1,5 +1,5 @@
 pub const io_mode = .evented; // use event loop
-pub const log_level: std.log.Level = .info;
+// pub const log_level: std.log.Level = .info;
 
 const args = @import("args");
 const std = @import("std");
@@ -64,14 +64,17 @@ pub fn main() !void {
     // Add default functions
 
     var timer_thread = try TimerThread.init(server.job_queue);
-    try timer_thread.add_timer(1000, timer_functions.expand_connections, true);
-    try timer_thread.add_timer(20000, timer_functions.refresh_finger_table, true);
-    try timer_thread.add_timer(30000, timer_functions.sync_finger_table, true);
+    try timer_thread.add_timer(1000, timer_functions.ping_finger_table, true);
+    try timer_thread.add_timer(4000, timer_functions.sync_finger_table_with_routing, true);
+    try timer_thread.add_timer(5000, timer_functions.search_finger_table, true);
+    try timer_thread.add_timer(10000, timer_functions.bootstrap_connect_seen, true);
+
     try timer_thread.start();
 
     try server.start();
 
     while (true) {
+        std.log.info("Queueing Hello", .{});
         try server.queue_broadcast("hello");
         std.time.sleep(std.time.ns_per_s);
     }

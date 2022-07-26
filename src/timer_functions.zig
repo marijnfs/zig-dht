@@ -8,79 +8,56 @@ const communication = index.communication;
 const id_ = index.id;
 const Server = index.Server;
 const ID = index.ID;
+const hex = index.hex;
 
-pub fn expand_connections(server: *Server) !void {
-    //TODO: Make sure n_active_connections keeps 'last connect' into account
-    // Needs heartbeat
-    std.log.debug("expanding connections {}", .{server.finger_table.n_active_connections()});
-    if (server.finger_table.n_active_connections() == 0) {
-        var it = server.routing.addresses_seen.valueIterator();
-        while (it.next()) |address| {
-            {
-                const content: communication.Content = .{ .ping = .{} };
-                try communication.enqueue_envelope(content, .{ .address = address.* }, server);
-            }
-            {
-                var key_it = server.finger_table.keyIterator();
-                while (key_it.next()) |key| {
-                    const content: communication.Content = .{ .find = .{ .id = key.*, .inclusive = 1 } };
-                    try communication.enqueue_envelope(content, .{ .address = address.* }, server);
-                }
-            }
-        }
+pub fn bootstrap_connect_seen(server: *Server) !void {
+    var it = server.routing.addresses_seen.valueIterator();
+    while (it.next()) |address| {
+        try server.job_queue.enqueue(.{ .connect = address.* });
     }
-
-    // Request more known ips
-    // var it = default.server.outgoing_connections.keyIterator();
-    // while (it.next()) |conn| {
-    //     std.log.debug("conn: {}", .{conn.*.address});
-    //     const content: communication.Content = .{ .get_known_ips = default.target_connections };
-    //     const envelope = communication.Envelope{ .target_id = std.mem.zeroes(ID), .source_id = default.server.id, .nonce = id_.get_guid(), .content = content };
-
-    //     const outbound_message = communication.OutboundMessage{
-    //         .target = .{ .guid = conn.*.guid },
-    //         .payload = .{
-    //             .envelope = envelope,
-    //         },
-    //     };
-
-    //     try default.server.job_queue.enqueue(.{ .send_message = outbound_message });
-    // }
-
-    // const connections_to_add = default.target_connections - n_connections;
-
-    // const addresses_seen = try routing.get_addresses_seen();
-    // defer default.allocator.free(addresses_seen);
-
-    // const random_selection = try utils.random_selection(connections_to_add, addresses_seen.len);
-    // defer default.allocator.free(random_selection);
-
-    // for (random_selection) |s| {
-    //     const address = addresses_seen[s];
-    //     if (default.server.is_connected_to(address))
-    //         continue;
-    //     try default.server.job_queue.enqueue(.{ .connect = address });
-    // }
 }
 
-pub fn sync_finger_table(server: *Server) !void {
-    std.log.info("sync finger table", .{});
+pub fn sync_finger_table_with_routing(server: *Server) !void {
+    //TODO: Make sure n_active_connections keeps 'last connect' into account
+    // Needs heartbeat
+    std.log.debug("Syncing with routing, current active: {}", .{server.finger_table.n_active_connections()});
+
+    for (server.routing.records.items) |kv| {
+        std.log.debug("Routing entry: {}", .{kv});
+    }
+
+    var it = server.finger_table.iterator();
+    while (it.next()) |finger| {
+        const id = finger.key_ptr.*;
+        const node = finger.value_ptr;
+        if (server.routing.get_closest_active_record(id)) |*record| {
+            node.id = record.id;
+            node.address = record.address;
+            std.log.debug("Setting: bid{}, id:{}, addr:{}", .{ hex(&id), hex(&node.id), node.address });
+        }
+    }
+}
+
+pub fn ping_finger_table(server: *Server) !void {
+    std.log.info("ping finger table", .{});
 
     var it = server.finger_table.iterator();
     while (it.next()) |finger| {
         const id = finger.key_ptr.*;
         const node = finger.value_ptr.*;
+
         if (id_.is_zero(node.id))
             continue;
+
+        std.log.debug("Connecting to finger: {} {}", .{ index.hex(&id), node });
         const address = node.address;
 
-        std.log.debug("connecting to finger: {} {}", .{ index.hex(&id), node });
         try server.job_queue.enqueue(.{ .connect = address });
     }
 }
 
-pub fn refresh_finger_table(server: *Server) !void {
-    std.log.info("refresh finger table", .{});
+pub fn search_finger_table(server: *Server) !void {
+    std.log.info("search finger table", .{});
     {
         var it = server.finger_table.keyIterator();
         while (it.next()) |id| {

@@ -8,7 +8,7 @@ const c = index.c;
 const id_ = index.id;
 const ID = index.ID;
 const Server = index.server.Server;
-
+const hex = index.hex;
 // Message contents
 
 pub const Content = union(enum) {
@@ -59,6 +59,10 @@ pub const Envelope = struct {
     source_id: ID = std.mem.zeroes(ID),
     nonce: u64 = 0,
     content: Content,
+
+    pub fn format(envelope: *const Envelope, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
+        try writer.print("Envelope, hash:{}, tgt: {}, src: {}, nonce:{} = {}", .{ hex(&envelope.hash), hex(&envelope.source_id), hex(&envelope.target_id), envelope.nonce, envelope.content });
+    }
 };
 
 const Target = union(enum) {

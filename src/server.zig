@@ -95,7 +95,7 @@ pub const Server = struct {
         }
     }
 
-    pub fn queue_direct(server: *Server, id: ID, buf: []const u8) !void {
+    pub fn queue_direct_message(server: *Server, id: ID, buf: []const u8) !void {
         communication.enqueue_envelope(.{ .direct_message = buf }, .{ .id = id }, server);
     }
 
