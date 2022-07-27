@@ -39,8 +39,7 @@ pub fn sync_finger_table_with_routing(server: *Server) !void {
 }
 
 pub fn ping_finger_table(server: *Server) !void {
-    std.log.info("ping finger table", .{});
-
+    std.log.debug("ping finger table", .{});
     var it = server.finger_table.iterator();
     while (it.next()) |finger| {
         const id = finger.key_ptr.*;
