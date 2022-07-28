@@ -56,7 +56,7 @@ pub fn ping_finger_table(server: *Server) !void {
 }
 
 pub fn search_finger_table(server: *Server) !void {
-    std.log.info("search finger table", .{});
+    std.log.debug("search finger table", .{});
     {
         var it = server.finger_table.keyIterator();
         while (it.next()) |id| {
