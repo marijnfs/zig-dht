@@ -15,7 +15,7 @@ pub fn main() !void {
 
     const id = dht.id.rand_id();
     const addr = net.Address.initIp4([_]u8{ 0, 0, 0, 0 }, 4040);
-    var server = try dht.server.Server.init(addr, id);
+    var server = try dht.server.Server.init(addr, id, .{});
     defer server.deinit();
 
     try server.start();

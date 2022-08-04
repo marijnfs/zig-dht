@@ -41,7 +41,7 @@ pub fn main() !void {
 
     const address = try std.net.Address.parseIp(options.options.ip.?, options.options.port.?);
     const id = dht.id.rand_id();
-    var server = try dht.server.Server.init(address, id);
+    var server = try dht.server.Server.init(address, id, .{});
     defer server.deinit();
 
     if (options.options.remote_ip != null and options.options.remote_port != null) {
@@ -52,25 +52,6 @@ pub fn main() !void {
 
     try server.add_direct_message_hook(direct_message_hook);
     try server.add_broadcast_hook(broadcast_hook);
-
-    // add initial connection
-    // if (args.len >= 5) {
-    //     const port = try std.fmt.parseInt(u16, args[4], 0);
-    //     const address = try std.net.Address.parseIp(args[3], port);
-    //     try server.routing.add_address_seen(address);
-    //     try server.job_queue.enqueue(.{ .connect = address });
-    // }
-
-    // Add default functions
-
-    var timer_thread = try TimerThread.init(server.job_queue);
-    try timer_thread.add_timer(1000, timer_functions.ping_finger_table, true);
-    try timer_thread.add_timer(4000, timer_functions.sync_finger_table_with_routing, true);
-    try timer_thread.add_timer(5000, timer_functions.search_finger_table, true);
-    try timer_thread.add_timer(10000, timer_functions.bootstrap_connect_seen, true);
-
-    try timer_thread.start();
-
     try server.start();
 
     while (true) {

@@ -9,6 +9,8 @@ const utils = index.utils;
 const serial = index.serial;
 const hash = index.hash;
 const model = index.model;
+const timer = index.timer;
+const timer_functions = index.timer_functions;
 
 const Socket = index.Socket;
 const Hash = index.Hash;
@@ -20,6 +22,13 @@ const ID = index.ID;
 const JobQueue = index.JobQueue(ServerJob, *Server);
 
 pub const Server = struct {
+    const ServerConfig = struct {
+        ping_finger_table_timer: i64 = 1000, //time in ms
+        sync_finger_table_timer: i64 = 4000,
+        search_finger_table_timer: i64 = 5000,
+        bootstrap_timer: i64 = 10000,
+    };
+
     const HookType = fn ([]const u8, ID, net.Address) anyerror!void;
     address: net.Address,
     apparent_address: ?net.Address = null,
@@ -36,8 +45,9 @@ pub const Server = struct {
     public: bool = false, // Are we on the public internet, and advertise as such (helping with hole punching)
 
     punch_map: std.AutoHashMap(ID, net.Address),
+    timer_thread: *timer.TimerThread,
 
-    pub fn init(address: net.Address, id: ID) !*Server {
+    pub fn init(address: net.Address, id: ID, config: ServerConfig) !*Server {
         var server = try default.allocator.create(Server);
         server.* = .{
             .address = address,
@@ -50,7 +60,11 @@ pub const Server = struct {
             .direct_message_hooks = std.ArrayList(HookType).init(default.allocator),
             .broadcast_hooks = std.ArrayList(HookType).init(default.allocator),
             .punch_map = std.AutoHashMap(ID, net.Address).init(default.allocator),
+            .timer_thread = undefined, //defined in init_timer_functions
         };
+
+        try server.init_timer_functions(config);
+
         return server;
     }
 
@@ -66,6 +80,15 @@ pub const Server = struct {
         server.address = try server.socket.getAddress();
         server.job_queue.start_job_loop();
         server.frame = async server.accept_loop();
+        try server.timer_thread.start();
+    }
+
+    pub fn init_timer_functions(server: *Server, config: ServerConfig) !void {
+        server.timer_thread = try timer.TimerThread.init(server.job_queue);
+        try server.timer_thread.add_timer(config.ping_finger_table_timer, timer_functions.ping_finger_table, true);
+        try server.timer_thread.add_timer(config.sync_finger_table_timer, timer_functions.sync_finger_table_with_routing, true);
+        try server.timer_thread.add_timer(config.search_finger_table_timer, timer_functions.search_finger_table, true);
+        try server.timer_thread.add_timer(config.bootstrap_timer, timer_functions.bootstrap_connect_seen, true);
     }
 
     pub fn wait(server: *Server) !void {
