@@ -1,5 +1,8 @@
 # TODO:
 
+> Move Timer thread somewhere in server
+  > Make some sane configuration struct
+
 > Good first apps:
   > Library of Alexandria (Mouseion)
     > All public books, there must be a collection somewhere
@@ -34,6 +37,5 @@
 > Reenable crypto seed init (segfaults now, known zig issue)
 > Extract smiley app from backend
   > Create separate job queue for drawing, app logic
-
 
 # Next: (small) steps selected with priority to make progress.
