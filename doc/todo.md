@@ -1,5 +1,7 @@
 # TODO:
 
+> Still hard to decide when to send punch request
+
 > Refactor
   > There are probably still to many layers in communication, e.g. envelope etc
 

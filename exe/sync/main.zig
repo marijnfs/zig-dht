@@ -45,6 +45,9 @@ pub fn main() !void {
     const address = try std.net.Address.parseIp(options.options.ip.?, options.options.port.?);
     const id = dht.id.rand_id();
     var server = try dht.server.Server.init(address, id, .{ .public = options.options.public });
+    if (server.public) {
+        std.log.info("Server set to public", .{});
+    }
     defer server.deinit();
 
     if (options.options.remote_ip != null and options.options.remote_port != null) {
