@@ -27,6 +27,7 @@ pub const Server = struct {
         sync_finger_table_timer: i64 = 4000,
         search_finger_table_timer: i64 = 5000,
         bootstrap_timer: i64 = 10000,
+        public: bool,
     };
 
     const HookType = fn ([]const u8, ID, net.Address) anyerror!void;
@@ -42,7 +43,7 @@ pub const Server = struct {
 
     direct_message_hooks: std.ArrayList(HookType),
     broadcast_hooks: std.ArrayList(HookType),
-    public: bool = false, // Are we on the public internet, and advertise as such (helping with hole punching)
+    public: bool, // Are we on the public internet, and advertise as such (helping with hole punching)
 
     punch_map: std.AutoHashMap(ID, net.Address),
     timer_thread: *timer.TimerThread,
@@ -61,6 +62,7 @@ pub const Server = struct {
             .broadcast_hooks = std.ArrayList(HookType).init(default.allocator),
             .punch_map = std.AutoHashMap(ID, net.Address).init(default.allocator),
             .timer_thread = undefined, //defined in init_timer_functions
+            .public = config.public,
         };
 
         try server.init_timer_functions(config);

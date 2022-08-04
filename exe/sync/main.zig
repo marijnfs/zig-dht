@@ -34,6 +34,7 @@ pub fn main() !void {
         port: ?u16,
         remote_ip: ?[]const u8 = null,
         remote_port: ?u16 = null,
+        public: bool = false,
     }, allocator, .print);
     if (options.options.ip == null or options.options.port == null) {
         std.log.warn("Ip not defined", .{});
@@ -43,7 +44,7 @@ pub fn main() !void {
 
     const address = try std.net.Address.parseIp(options.options.ip.?, options.options.port.?);
     const id = dht.id.rand_id();
-    var server = try dht.server.Server.init(address, id, .{});
+    var server = try dht.server.Server.init(address, id, .{ .public = options.options.public });
     defer server.deinit();
 
     if (options.options.remote_ip != null and options.options.remote_port != null) {
