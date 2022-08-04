@@ -1,7 +1,7 @@
 # TODO:
 
-> Move Timer thread somewhere in server
-  > Make some sane configuration struct
+> Refactor
+  > There are probably still to many layers in communication, e.g. envelope etc
 
 > Good first apps:
   > Library of Alexandria (Mouseion)

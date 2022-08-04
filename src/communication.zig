@@ -30,6 +30,7 @@ pub const Content = union(enum) {
     found: struct {
         id: ID,
         address: ?std.net.Address,
+        public_requested: bool = false,
         public: bool = false,
     },
     punch_suggest: struct {
@@ -76,6 +77,7 @@ pub const OutboundMessage = struct {
         raw: []const u8,
         envelope: Envelope,
     },
+    public: bool = false, //send to public id
 };
 
 pub const InboundMessage = struct {
@@ -169,22 +171,23 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *Se
 
                 if (finger.is_zero() or id_.less(our_dist, other_dist)) {
                     // can't find any record, return self
-                    const return_content: Content = .{ .found = .{ .id = server.id, .address = server.apparent_address } };
-                    std.log.debug("Returning self {s}", .{server.apparent_address});
+                    const return_content: Content = .{ .found = .{ .id = server.id, .address = server.apparent_address, .public = server.public, .public_requested = find.public } };
+                    std.log.debug("Returning self {?}", .{server.apparent_address});
                     const outbound_message = try build_reply(return_content, envelope, server.id);
                     try server.job_queue.enqueue(.{ .send_message = outbound_message });
                 } else {
                     // route forward
-                    try server.job_queue.enqueue(.{ .send_message = .{ .target = .{ .address = finger.address }, .payload = .{ .envelope = envelope } } });
+                    try server.job_queue.enqueue(.{ .send_message = .{ .target = .{ .address = finger.address }, .payload = .{ .envelope = envelope }, .public = find.public } });
                 }
             }
         },
         .found => |found| {
-            std.log.debug("found result: {s} {}", .{ found, found.address });
+            std.log.debug("found result: {} {?}", .{ hex(&found.id), found.address });
 
             const id = found.id;
+
             if (found.address) |addr| {
-                if (found.public) {
+                if (found.public_requested and found.public) {
                     std.log.debug("update public: {} {}", .{ index.hex(&id), addr });
                     try server.public_finger_table.update_closest_finger(id, addr);
                 } else {
@@ -219,20 +222,20 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *Se
             var our_ip = pong.apparent_ip;
             // our_ip.setPort(server.address.getPort()); // set the port so the address becomes our likely external connection ip
             server.apparent_address = our_ip;
-            std.log.debug("apparent_address: {}", .{server.apparent_address});
+            std.log.debug("apparent_address: {?}", .{server.apparent_address});
         },
         .send_known_ips => |known_ips| {
             std.log.debug("adding n 'known' addresses: {}", .{known_ips.len});
 
             defer default.allocator.free(known_ips);
             for (known_ips) |addr| {
-                try server.routing.add_address_seen(addr);
+                const public = false;
+                try server.routing.add_address_seen(addr, public);
             }
         },
         .punch_suggest => |punch_suggest| { // Someone is requesting a punch connection
             // send accept invitation
             // this is also an opportunity to possibly suggest another public ip
-            // especially if somehow nonce are suggested
             try enqueue_envelope(.{
                 .punch_accept = .{
                     .nonce = punch_suggest.nonce,
@@ -261,27 +264,19 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *Se
                 },
             }, .{ .address = punch_accept.suggested_public_address }, server);
         },
-        .punch_request => |punch_request| {
+        .punch_request => |punch_request| { //Only a public server would get this
             const nonce = punch_request.nonce;
-            const initiator = punch_request.initiator;
+            // const initiator = punch_request.initiator;
 
-            if (server.punch_map.get(nonce)) |stored_address| {
+            if (server.punch_map.get(nonce)) |stored_address| { //the first request already came and is stored
                 std.log.debug("Found a punch between {} {}", .{ address, stored_address });
-                if (initiator) {
-                    try enqueue_envelope(.{
-                        .punch_reply = .{
-                            .nonce = punch_request.nonce,
-                            .punch_address = stored_address,
-                        },
-                    }, .{ .address = address }, server);
-                } else {
-                    try enqueue_envelope(.{
-                        .punch_reply = .{
-                            .nonce = punch_request.nonce,
-                            .punch_address = address,
-                        },
-                    }, .{ .address = stored_address }, server);
-                }
+                // We don't really need to know who the initiator was, we just assume the first to react to be the 'receiver'
+                try enqueue_envelope(.{
+                    .punch_reply = .{
+                        .nonce = punch_request.nonce,
+                        .punch_address = stored_address,
+                    },
+                }, .{ .address = address }, server);
 
                 _ = server.punch_map.remove(nonce);
             } else {
@@ -289,7 +284,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *Se
             }
         },
         .punch_reply => |punch_reply| {
-            try server.job_queue.enqueue(.{ .connect = punch_reply.punch_address });
+            try server.job_queue.enqueue(.{ .connect = .{ .address = punch_reply.punch_address, .public = true } }); //we pretend for a moment the address is public, as the port should be open to us
         },
     }
 }

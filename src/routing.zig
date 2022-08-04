@@ -15,6 +15,7 @@ const Record = struct {
     address: std.net.Address = undefined,
     red_flags: usize = 0,
     last_connect: i64 = 0,
+    public: bool = false,
 
     fn active(record: *Record, milliThreshold: usize) bool {
         return time.milliTimestamp() - record.last_connect < milliThreshold;
@@ -28,6 +29,7 @@ const Record = struct {
 pub const RoutingTable = struct {
     id: ID,
     addresses_seen: std.AutoHashMap(Hash, std.net.Address),
+    public_addresses_seen: std.AutoHashMap(Hash, std.net.Address),
 
     records: std.ArrayList(*Record),
     ip_index: std.StringHashMap(*Record),
@@ -38,6 +40,7 @@ pub const RoutingTable = struct {
         table.* = .{
             .id = id,
             .addresses_seen = std.AutoHashMap(Hash, std.net.Address).init(default.allocator),
+            .public_addresses_seen = std.AutoHashMap(Hash, std.net.Address).init(default.allocator),
 
             .records = std.ArrayList(*Record).init(default.allocator),
             .ip_index = std.StringHashMap(*Record).init(default.allocator),
@@ -49,6 +52,7 @@ pub const RoutingTable = struct {
 
     pub fn deinit(table: *RoutingTable) void {
         table.addresses_seen.deinit();
+        table.public_addresses_seen.deinit();
     }
 
     pub fn get_closest_active_record(table: *RoutingTable, id: ID) ?Record {
@@ -115,11 +119,15 @@ pub const RoutingTable = struct {
         return addresses;
     }
 
-    pub fn add_address_seen(table: *RoutingTable, addr: std.net.Address) !void {
+    pub fn add_address_seen(table: *RoutingTable, addr: std.net.Address, public: bool) !void {
         std.log.debug("saw ip: {}", .{addr});
         const addr_string = try std.fmt.allocPrint(default.allocator, "{}", .{addr});
         const hash = utils.calculate_hash(addr_string);
-        try table.addresses_seen.put(hash, addr);
+        if (public) {
+            try table.public_addresses_seen.put(hash, addr);
+        } else {
+            try table.addresses_seen.put(hash, addr);
+        }
     }
 
     pub fn select_known_addresses(table: *RoutingTable, n_ips: usize) !std.ArrayList(std.net.Address) {

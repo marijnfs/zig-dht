@@ -19,7 +19,10 @@ const Server = index.Server;
 const JobQueue = index.JobQueue(ServerJob, *Server);
 
 pub const ServerJob = union(enum) {
-    connect: std.net.Address,
+    connect: struct {
+        address: std.net.Address,
+        public: bool,
+    },
     send_message: communication.OutboundMessage,
     inbound_message: index.socket.UDPIncoming,
     process_message: communication.InboundMessage,
@@ -29,16 +32,23 @@ pub const ServerJob = union(enum) {
 
     pub fn work(self: *ServerJob, queue: *JobQueue, server: *Server) !void {
         switch (self.*) {
-            .connect => |address| {
+            .connect => |connect| {
                 if (server.apparent_address) |apparent_address| {
-                    if (std.net.Address.eql(address, apparent_address)) {
+                    if (std.net.Address.eql(connect.address, apparent_address)) {
                         std.log.debug("Asked to connect to our own apparent ip, ignoring", .{});
                         return;
                     }
                 }
 
-                // Create ping request
-                try communication.enqueue_envelope(.{ .ping = .{} }, .{ .address = address }, server);
+                if (connect.public) {
+                    // Create ping request
+                    try communication.enqueue_envelope(.{ .ping = .{} }, .{ .address = connect.address }, server);
+                } else {
+                    if (server.public_finger_table.get_closest_active_finger(server.id)) |finger| //todo, doesn't need to be closest to me, this was just convenient. Random is maybe better
+                    {
+                        try communication.enqueue_envelope(.{ .punch_suggest = .{ .suggested_public_address = finger.address, .nonce = id_.rand_id() } }, .{ .address = connect.address }, server);
+                    }
+                }
             },
             .process_message => |inbound| {
                 try communication.process_message(inbound.envelope, inbound.address, server);
@@ -73,7 +83,15 @@ pub const ServerJob = union(enum) {
                         }
 
                         // routing
-                        if (server.finger_table.get_closest_active_finger(id)) |finger| {
+                        var finger_table = b: {
+                            if (outbound_message.public) {
+                                break :b server.public_finger_table;
+                            } else {
+                                break :b server.finger_table;
+                            }
+                        };
+
+                        if (finger_table.get_closest_active_finger(id)) |finger| {
                             try server.socket.sendTo(finger.address, data);
                         } else {
                             //failed to find any valid record

@@ -107,7 +107,8 @@ pub const Server = struct {
         while (true) {
             const msg = try server.socket.recvFrom();
 
-            try server.routing.add_address_seen(msg.from);
+            const public = false;
+            try server.routing.add_address_seen(msg.from, public);
 
             // Update / Add record
             if (!try server.routing.verify_address(msg.from)) {

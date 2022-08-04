@@ -11,9 +11,9 @@ const ID = index.ID;
 const hex = index.hex;
 
 pub fn bootstrap_connect_seen(server: *Server) !void {
-    var it = server.routing.addresses_seen.valueIterator();
+    var it = server.routing.public_addresses_seen.valueIterator();
     while (it.next()) |address| {
-        try server.job_queue.enqueue(.{ .connect = address.* });
+        try server.job_queue.enqueue(.{ .connect = .{ .address = address.*, .public = true } });
     }
 }
 
@@ -40,19 +40,28 @@ pub fn sync_finger_table_with_routing(server: *Server) !void {
 
 pub fn ping_finger_table(server: *Server) !void {
     std.log.debug("ping finger table", .{});
+
+    const ping_fingers = struct {
+        fn f(it: anytype, server_: *Server) !void {
+            while (it.next()) |finger| {
+                const id = finger.key_ptr.*;
+                const node = finger.value_ptr.*;
+
+                if (id_.is_zero(node.id))
+                    continue;
+
+                std.log.debug("Connecting to finger: {} {}", .{ index.hex(&id), node });
+                const address = node.address;
+
+                try server_.job_queue.enqueue(.{ .connect = .{ .address = address, .public = true } }); //we have an open connection to active fingers, so they are on the public address space
+            }
+        }
+    }.f;
+
     var it = server.finger_table.iterator();
-    while (it.next()) |finger| {
-        const id = finger.key_ptr.*;
-        const node = finger.value_ptr.*;
-
-        if (id_.is_zero(node.id))
-            continue;
-
-        std.log.debug("Connecting to finger: {} {}", .{ index.hex(&id), node });
-        const address = node.address;
-
-        try server.job_queue.enqueue(.{ .connect = address });
-    }
+    var public_it = server.public_finger_table.iterator();
+    try ping_fingers(&it, server);
+    try ping_fingers(&public_it, server);
 }
 
 pub fn search_finger_table(server: *Server) !void {

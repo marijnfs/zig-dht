@@ -8,6 +8,7 @@ const dht = @import("dht");
 const default = dht.default;
 const socket = dht.socket;
 const timer_functions = dht.timer_functions;
+const hex = dht.hex;
 
 const TimerThread = dht.timer.TimerThread;
 
@@ -27,12 +28,13 @@ fn broadcast_hook(buf: []const u8, src_id: dht.ID, src_address: net.Address) !vo
 }
 
 pub fn main() !void {
+    const allocator = std.heap.page_allocator;
     const options = try args.parseForCurrentProcess(struct {
         ip: ?[]const u8,
         port: ?u16,
         remote_ip: ?[]const u8 = null,
         remote_port: ?u16 = null,
-    }, std.heap.page_allocator, .print);
+    }, allocator, .print);
     if (options.options.ip == null or options.options.port == null) {
         std.log.warn("Ip not defined", .{});
         return;
@@ -46,8 +48,9 @@ pub fn main() !void {
 
     if (options.options.remote_ip != null and options.options.remote_port != null) {
         const address_remote = try std.net.Address.parseIp(options.options.remote_ip.?, options.options.remote_port.?);
-        try server.routing.add_address_seen(address_remote);
-        try server.job_queue.enqueue(.{ .connect = address_remote });
+        const public = true;
+        try server.routing.add_address_seen(address_remote, public);
+        try server.job_queue.enqueue(.{ .connect = .{ .address = address_remote, .public = true } });
     }
 
     try server.add_direct_message_hook(direct_message_hook);
@@ -56,7 +59,8 @@ pub fn main() !void {
 
     while (true) {
         std.log.info("Queueing Hello", .{});
-        try server.queue_broadcast("hello");
+        const msg = try std.fmt.allocPrint(allocator, "Hello from {}", .{hex(&server.id)});
+        try server.queue_broadcast(msg);
         std.time.sleep(std.time.ns_per_s);
     }
     try server.wait();
