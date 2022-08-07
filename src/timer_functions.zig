@@ -11,7 +11,7 @@ const ID = index.ID;
 const hex = index.hex;
 
 pub fn bootstrap_connect_seen(server: *Server) !void {
-    var it = server.routing.public_addresses_seen.valueIterator();
+    var it = server.routing.addresses_seen.valueIterator();
     while (it.next()) |address| {
         try server.job_queue.enqueue(.{ .connect = .{ .address = address.*, .public = true } });
     }
@@ -31,7 +31,20 @@ pub fn sync_finger_table_with_routing(server: *Server) !void {
         const id = finger.key_ptr.*;
         const node = finger.value_ptr;
 
-        if (server.routing.get_closest_active_record(id)) |*record| {
+        const require_public = false;
+        if (server.routing.get_closest_active_record(id, require_public)) |record| {
+            node.id = record.id;
+            node.address = record.address;
+        }
+    }
+
+    var it_public = server.public_finger_table.iterator();
+    while (it_public.next()) |finger| {
+        const id = finger.key_ptr.*;
+        const node = finger.value_ptr;
+
+        const require_public = true;
+        if (server.routing.get_closest_active_record(id, require_public)) |record| {
             node.id = record.id;
             node.address = record.address;
         }
@@ -53,7 +66,7 @@ pub fn ping_finger_table(server: *Server) !void {
                 std.log.debug("Connecting to finger: {} {}", .{ index.hex(&id), node });
                 const address = node.address;
 
-                try server_.job_queue.enqueue(.{ .connect = .{ .address = address, .public = true } }); //we have an open connection to active fingers, so they are on the public address space
+                try communication.enqueue_envelope(.{ .ping = .{ .public = server_.public } }, .{ .address = address }, server_);
             }
         }
     }.f;
@@ -70,7 +83,7 @@ pub fn search_finger_table(server: *Server) !void {
         var it = server.finger_table.keyIterator();
         while (it.next()) |id| {
             const content: communication.Content = .{ .find = .{ .id = id.*, .inclusive = 1 } };
-            try communication.enqueue_envelope(content, .{ .id = id.* }, server);
+            try communication.enqueue_envelope(content, .{ .id = id_.zeroes() }, server);
         }
     }
     // update public table
@@ -78,7 +91,7 @@ pub fn search_finger_table(server: *Server) !void {
         var it = server.public_finger_table.keyIterator();
         while (it.next()) |id| {
             const content: communication.Content = .{ .find = .{ .id = id.*, .inclusive = 1, .public = true } };
-            try communication.enqueue_envelope(content, .{ .id = id.* }, server);
+            try communication.enqueue_envelope(content, .{ .id = id_.zeroes() }, server);
         }
     }
 }

@@ -52,8 +52,7 @@ pub fn main() !void {
 
     if (options.options.remote_ip != null and options.options.remote_port != null) {
         const address_remote = try std.net.Address.parseIp(options.options.remote_ip.?, options.options.remote_port.?);
-        const public = true;
-        try server.routing.add_address_seen(address_remote, public);
+        try server.routing.add_address_seen(address_remote);
         try server.job_queue.enqueue(.{ .connect = .{ .address = address_remote, .public = true } });
     }
 

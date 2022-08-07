@@ -69,6 +69,28 @@ pub const FingerTable = struct {
         return closest_finger;
     }
 
+    pub fn get_random_active_finger(table: *FingerTable) !?Finger {
+        var active_fingers = std.ArrayList(*Finger).init(default.allocator);
+        defer active_fingers.deinit();
+
+        var it = table.valueIterator();
+        while (it.next()) |finger| {
+            if (!finger.is_zero()) {
+                try active_fingers.append(finger);
+            }
+        }
+
+        if (active_fingers.items.len == 0) {
+            std.log.debug("Didn't find random active finger", .{});
+            return null;
+        }
+
+        var selection = try utils.random_selection(1, active_fingers.items.len);
+        defer default.allocator.free(selection);
+
+        return active_fingers.items[selection[0]].*;
+    }
+
     pub fn get_closest_key(table: *FingerTable, id: ID) !ID {
         var it = table.fingers.keyIterator();
 

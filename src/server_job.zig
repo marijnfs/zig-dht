@@ -42,7 +42,7 @@ pub const ServerJob = union(enum) {
 
                 if (connect.public) {
                     // Create ping request
-                    try communication.enqueue_envelope(.{ .ping = .{} }, .{ .address = connect.address }, server);
+                    try communication.enqueue_envelope(.{ .ping = .{ .public = server.public } }, .{ .address = connect.address }, server);
                 } else {
                     if (server.public_finger_table.get_closest_active_finger(server.id)) |finger| //todo, doesn't need to be closest to me, this was just convenient. Random is maybe better
                     {
@@ -90,6 +90,14 @@ pub const ServerJob = union(enum) {
                                 break :b server.finger_table;
                             }
                         };
+
+                        if (id_.is_zero(id)) { //pick a random target
+                            if (try finger_table.get_random_active_finger()) |finger| {
+                                try server.socket.sendTo(finger.address, data);
+                            } else {
+                                std.log.debug("Failed to find any random active connection", .{});
+                            }
+                        }
 
                         if (finger_table.get_closest_active_finger(id)) |finger| {
                             try server.socket.sendTo(finger.address, data);

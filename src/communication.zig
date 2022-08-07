@@ -14,7 +14,7 @@ const hex = index.hex;
 pub const Content = union(enum) {
     ping: struct {
         // source_port: u16,
-        bla: u64 = 0, //void mights till be broken
+        public: bool, //void mights till be broken
     },
     pong: struct {
         apparent_ip: std.net.Address,
@@ -204,7 +204,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *Se
 
             // Resolve the possible connection address
 
-            try server.routing.update_ip_id_pair(envelope.source_id, address);
+            try server.routing.update_ip_id_pair(envelope.source_id, address, ping.public);
 
             std.log.debug("got ping from addr: {any}", .{address});
             std.log.debug("source id seems: {}", .{index.hex(&envelope.source_id)});
@@ -218,7 +218,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *Se
         },
         .pong => |pong| {
             std.log.debug("got pong: {} {} {s}", .{ pong, index.hex(&envelope.source_id), address });
-            try server.routing.update_ip_id_pair(envelope.source_id, address);
+            try server.routing.update_ip_id_pair(envelope.source_id, address, pong.public);
             var our_ip = pong.apparent_ip;
             // our_ip.setPort(server.address.getPort()); // set the port so the address becomes our likely external connection ip
             server.apparent_address = our_ip;
@@ -229,8 +229,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *Se
 
             defer default.allocator.free(known_ips);
             for (known_ips) |addr| {
-                const public = false;
-                try server.routing.add_address_seen(addr, public);
+                try server.routing.add_address_seen(addr);
             }
         },
         .punch_suggest => |punch_suggest| { // Someone is requesting a punch connection

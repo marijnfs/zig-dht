@@ -29,7 +29,6 @@ const Record = struct {
 pub const RoutingTable = struct {
     id: ID,
     addresses_seen: std.AutoHashMap(Hash, std.net.Address),
-    public_addresses_seen: std.AutoHashMap(Hash, std.net.Address),
 
     records: std.ArrayList(*Record),
     ip_index: std.StringHashMap(*Record),
@@ -40,7 +39,6 @@ pub const RoutingTable = struct {
         table.* = .{
             .id = id,
             .addresses_seen = std.AutoHashMap(Hash, std.net.Address).init(default.allocator),
-            .public_addresses_seen = std.AutoHashMap(Hash, std.net.Address).init(default.allocator),
 
             .records = std.ArrayList(*Record).init(default.allocator),
             .ip_index = std.StringHashMap(*Record).init(default.allocator),
@@ -52,15 +50,17 @@ pub const RoutingTable = struct {
 
     pub fn deinit(table: *RoutingTable) void {
         table.addresses_seen.deinit();
-        table.public_addresses_seen.deinit();
     }
 
-    pub fn get_closest_active_record(table: *RoutingTable, id: ID) ?Record {
+    pub fn get_closest_active_record(table: *RoutingTable, id: ID, require_public: bool) ?Record {
         var closest_record: ?Record = null;
         var closest_distance = id_.ones();
 
         for (table.records.items) |record| {
             if (!record.active(20000)) {
+                continue;
+            }
+            if (require_public and !record.public) {
                 continue;
             }
             const distance = id_.xor(id, record.id);
@@ -70,8 +70,9 @@ pub const RoutingTable = struct {
                 closest_record = record.*;
             }
         }
-        if (id_.is_zero(closest_distance))
+        if (id_.is_ones(closest_distance))
             return null;
+
         return closest_record;
     }
 
@@ -84,7 +85,7 @@ pub const RoutingTable = struct {
         return table.id_index.get(id);
     }
 
-    pub fn update_ip_id_pair(table: *RoutingTable, id: ID, addr: std.net.Address) !void {
+    pub fn update_ip_id_pair(table: *RoutingTable, id: ID, addr: std.net.Address, public: bool) !void {
         const ip_string = try std.fmt.allocPrint(default.allocator, "{}", .{addr});
 
         var record = b: {
@@ -100,6 +101,7 @@ pub const RoutingTable = struct {
         record.* = .{
             .id = id,
             .address = addr,
+            .public = public,
             .last_connect = time.milliTimestamp(),
         };
 
@@ -119,15 +121,12 @@ pub const RoutingTable = struct {
         return addresses;
     }
 
-    pub fn add_address_seen(table: *RoutingTable, addr: std.net.Address, public: bool) !void {
+    // Store directly observed addresses
+    pub fn add_address_seen(table: *RoutingTable, addr: std.net.Address) !void {
         std.log.debug("saw ip: {}", .{addr});
         const addr_string = try std.fmt.allocPrint(default.allocator, "{}", .{addr});
         const hash = utils.calculate_hash(addr_string);
-        if (public) {
-            try table.public_addresses_seen.put(hash, addr);
-        } else {
-            try table.addresses_seen.put(hash, addr);
-        }
+        try table.addresses_seen.put(hash, addr);
     }
 
     pub fn select_known_addresses(table: *RoutingTable, n_ips: usize) !std.ArrayList(std.net.Address) {
@@ -149,6 +148,27 @@ pub const RoutingTable = struct {
         }
 
         return addresses;
+    }
+
+    pub fn get_random_active_record(table: *RoutingTable) !?Record {
+        var active_records = std.ArrayList(*Record).init(default.allocator);
+        defer active_records.deinit();
+
+        for (table.records.items) |record| {
+            if (record.active()) {
+                try active_records.add(record);
+            }
+        }
+
+        if (active_records.items.len == 0) {
+            std.log.debug("Didn't find random active connection", .{});
+            return null;
+        }
+
+        var selection = try utils.random_selection(1, active_records.items.len);
+        defer default.allocator.free(selection);
+
+        return active_records.items[selection[0]];
     }
 
     pub fn verify_address(table: *RoutingTable, address: std.net.Address) !bool {
