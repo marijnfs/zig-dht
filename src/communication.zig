@@ -170,7 +170,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *Se
                 const other_dist = id_.xor(finger.id, search_id);
 
                 if (finger.is_zero() or id_.less(our_dist, other_dist)) {
-                    // can't find any record, return self
+                    // can't find any better record, return self
                     const return_content: Content = .{ .found = .{ .id = server.id, .address = server.apparent_address, .public = server.public, .public_requested = find.public } };
                     std.log.debug("Returning self {?}", .{server.apparent_address});
                     const outbound_message = try build_reply(return_content, envelope, server.id);

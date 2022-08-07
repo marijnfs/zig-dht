@@ -93,10 +93,12 @@ pub const ServerJob = union(enum) {
 
                         if (id_.is_zero(id)) { //pick a random target
                             if (try finger_table.get_random_active_finger()) |finger| {
+                                std.log.info("Sending random to {s}", .{finger.address});
                                 try server.socket.sendTo(finger.address, data);
                             } else {
                                 std.log.debug("Failed to find any random active connection", .{});
                             }
+                            return;
                         }
 
                         if (finger_table.get_closest_active_finger(id)) |finger| {

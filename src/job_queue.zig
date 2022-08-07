@@ -34,7 +34,7 @@ pub fn JobQueue(comptime Job: type, comptime Context: type) type {
         pub fn job_loop(job_queue: *@This()) !void {
             while (true) {
                 if (job_queue.queue.pop()) |job| {
-                    std.log.debug("Work: {}", .{job});
+                    // std.log.debug("Work: {s}", .{@tagName(job)});
                     job.work(job_queue, job_queue.context) catch |e| {
                         std.log.warn("Work Error: {}", .{e});
                     };
