@@ -50,6 +50,7 @@ pub fn main() !void {
     }
     defer server.deinit();
 
+    // If a remote ip is provided, we use it to bootstrap our connections
     if (options.options.remote_ip != null and options.options.remote_port != null) {
         const address_remote = try std.net.Address.parseIp(options.options.remote_ip.?, options.options.remote_port.?);
         try server.routing.add_address_seen(address_remote);
