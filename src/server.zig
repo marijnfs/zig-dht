@@ -121,7 +121,7 @@ pub const Server = struct {
     }
 
     pub fn queue_direct_message(server: *Server, id: ID, buf: []const u8) !void {
-        communication.enqueue_envelope(.{ .direct_message = buf }, .{ .id = id }, server);
+        try communication.enqueue_envelope(.{ .direct_message = buf }, .{ .id = id }, server);
     }
 
     pub fn queue_broadcast(server: *Server, buf: []const u8) !void {
