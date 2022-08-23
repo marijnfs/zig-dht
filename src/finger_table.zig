@@ -4,6 +4,7 @@ const index = @import("index.zig");
 const default = index.default;
 const utils = index.utils;
 const id_ = index.id;
+const hex = index.hex;
 
 const ID = index.ID;
 const Hash = index.Hash;
@@ -52,11 +53,14 @@ pub const FingerTable = struct {
         var it = table.iterator();
         var closest_finger: *Finger = undefined;
         var closest_distance = id_.ones();
+
         while (it.next()) |kv| {
             const key = kv.key_ptr.*;
             const finger = kv.value_ptr;
+
             if (finger.is_zero())
                 continue;
+
             const distance = id_.xor(id, key);
             if (id_.less(distance, closest_distance)) {
                 closest_distance = distance;
@@ -105,7 +109,7 @@ pub const FingerTable = struct {
             }
         }
 
-        if (id_.is_ones(closest_id))
+        if (id_.is_ones(closest_distance))
             return error.NoClosestIdFound;
         return closest_id;
     }
@@ -145,21 +149,23 @@ pub const FingerTable = struct {
 
     fn init_finger_table(table: *FingerTable, n_fingers: usize) !void {
         var i: usize = 0;
-        std.log.debug("finger table init, id is: {}", .{index.hex(&table.id)});
+        std.log.info("finger table init, id is: {}", .{hex(&table.id)});
         while (i < n_fingers) : (i += 1) {
             const id = id_.xor_bitpos(table.id, i);
-            std.log.debug("id[{}]: {}", .{ i, index.hex(&id) });
+            std.log.info("id[{}]: {}", .{ i, hex(&id) });
             if (!table.fingers.contains(id))
                 try table.fingers.put(id, .{});
         }
     }
 
     pub fn summarize(table: *FingerTable, writer: anytype) !void {
-        var it = table.fingers.valueIterator();
+        var it = table.fingers.iterator();
 
-        while (it.next()) |finger| {
+        while (it.next()) |kv| {
+            const finger = kv.value_ptr.*;
+            const key = kv.key_ptr.*;
             if (!finger.is_zero())
-                try writer.print("finger:{} addr:{s}\n", .{ index.hex(&finger.id), finger.address });
+                try writer.print("k:{} finger:{} addr:{s}\n", .{ hex(key[0..16]), hex(finger.id[0..16]), finger.address });
         }
     }
 };
