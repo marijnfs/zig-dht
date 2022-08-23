@@ -41,7 +41,7 @@ pub fn JobQueue(comptime Job: type, comptime Context: type) type {
                     default.allocator.destroy(job);
                 } else {
                     //sleep
-                    std.time.sleep(10 * std.time.ns_per_ms);
+                    std.time.sleep(1 * std.time.ns_per_ms);
                 }
             }
         }

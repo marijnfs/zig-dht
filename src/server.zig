@@ -30,7 +30,7 @@ pub const Server = struct {
         public: bool,
     };
 
-    const HookType = fn ([]const u8, ID, net.Address) anyerror!void;
+    const HookType = fn ([]const u8, ID, net.Address, *Server) anyerror!void;
     address: net.Address,
     apparent_address: ?net.Address = null,
     socket: *Socket,

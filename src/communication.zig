@@ -133,7 +133,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *Se
         .broadcast => |broadcast| {
             std.log.debug("got broadcast: '{s}'", .{broadcast});
             for (server.broadcast_hooks.items) |callback| {
-                try callback(broadcast, envelope.source_id, address);
+                try callback(broadcast, envelope.source_id, address, server);
             }
 
             // broadcast further
@@ -142,7 +142,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *Se
         .direct_message => |direct_message| {
             std.log.debug("got dm: '{s}'", .{direct_message});
             for (server.direct_message_hooks.items) |callback| {
-                try callback(direct_message, envelope.source_id, address);
+                try callback(direct_message, envelope.source_id, address, server);
             }
         },
         .get_known_ips => |n_ips| {

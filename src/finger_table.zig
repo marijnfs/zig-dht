@@ -153,4 +153,13 @@ pub const FingerTable = struct {
                 try table.fingers.put(id, .{});
         }
     }
+
+    pub fn summarize(table: *FingerTable, writer: anytype) !void {
+        var it = table.fingers.valueIterator();
+
+        while (it.next()) |finger| {
+            if (!finger.is_zero())
+                try writer.print("finger:{} addr:{s}\n", .{ index.hex(&finger.id), finger.address });
+        }
+    }
 };

@@ -63,7 +63,7 @@ pub fn ping_finger_table(server: *Server) !void {
                 if (id_.is_zero(node.id))
                     continue;
 
-                std.log.debug("Connecting to finger: {} {}", .{ index.hex(&id), node });
+                std.log.debug("pinging finger: {} {}", .{ index.hex(&id), node });
                 const address = node.address;
 
                 try communication.enqueue_envelope(.{ .ping = .{ .public = server_.public } }, .{ .address = address }, server_);
