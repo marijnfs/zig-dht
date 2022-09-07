@@ -13,7 +13,9 @@ const hex = index.hex;
 pub fn bootstrap_connect_seen(server: *Server) !void {
     var it = server.routing.addresses_seen.valueIterator();
     while (it.next()) |address| {
-        try server.job_queue.enqueue(.{ .connect = .{ .address = address.*, .public = true } });
+        try communication.enqueue_envelope(.{ .ping = .{ .public = server.public } }, .{ .address = address.* }, server);
+
+        // try server.job_queue.enqueue(.{ .connect = .{ .address = address.*, .public = true } });
     }
 }
 
@@ -27,14 +29,18 @@ pub fn sync_finger_table_with_routing(server: *Server) !void {
     }
 
     var it = server.finger_table.iterator();
+    var last_id = id_.zeroes();
     while (it.next()) |finger| {
         const id = finger.key_ptr.*;
         const node = finger.value_ptr;
 
         const require_public = false;
         if (server.routing.get_closest_active_record(id, require_public)) |record| {
-            node.id = record.id;
-            node.address = record.address;
+            if (!id_.is_equal(last_id, record.id)) {
+                node.id = record.id;
+                node.address = record.address;
+            }
+            last_id = record.id;
         }
     }
 
@@ -45,8 +51,11 @@ pub fn sync_finger_table_with_routing(server: *Server) !void {
 
         const require_public = true;
         if (server.routing.get_closest_active_record(id, require_public)) |record| {
-            node.id = record.id;
-            node.address = record.address;
+            if (!id_.is_equal(last_id, record.id)) {
+                node.id = record.id;
+                node.address = record.address;
+            }
+            last_id = record.id;
         }
     }
 }
