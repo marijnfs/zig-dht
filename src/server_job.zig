@@ -133,13 +133,25 @@ pub const ServerJob = union(enum) {
             },
             .broadcast => |broadcast_envelope| {
                 std.log.debug("broadcasting: {s}", .{broadcast_envelope});
-                var it = server.finger_table.valueIterator();
-                while (it.next()) |finger| {
-                    if (finger.is_zero())
-                        continue;
-                    std.log.debug("broadcast to finger: {s}", .{finger.address});
+                {
+                    var it = server.finger_table.valueIterator();
+                    while (it.next()) |finger| {
+                        if (finger.is_zero())
+                            continue;
+                        std.log.debug("broadcast to finger: {s}", .{finger.address});
 
-                    try queue.enqueue(.{ .send_message = .{ .target = .{ .address = finger.address }, .payload = .{ .envelope = broadcast_envelope } } });
+                        try queue.enqueue(.{ .send_message = .{ .target = .{ .address = finger.address }, .payload = .{ .envelope = broadcast_envelope } } });
+                    }
+                }
+                {
+                    var it = server.public_finger_table.valueIterator();
+                    while (it.next()) |finger| {
+                        if (finger.is_zero())
+                            continue;
+                        std.log.debug("broadcast to finger: {s}", .{finger.address});
+
+                        try queue.enqueue(.{ .send_message = .{ .target = .{ .address = finger.address }, .payload = .{ .envelope = broadcast_envelope } } });
+                    }
                 }
             },
             .callback => |callback| {

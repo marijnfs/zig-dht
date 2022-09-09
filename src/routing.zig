@@ -88,6 +88,7 @@ pub const RoutingTable = struct {
     pub fn update_ip_id_pair(table: *RoutingTable, id: ID, addr: std.net.Address, public: bool) !void {
         const ip_string = try std.fmt.allocPrint(default.allocator, "{}", .{addr});
 
+        // Get current record or make a new one
         var record = b: {
             if (table.ip_index.get(ip_string)) |record| {
                 break :b record;
@@ -129,7 +130,7 @@ pub const RoutingTable = struct {
         try table.addresses_seen.put(hash, addr);
     }
 
-    pub fn select_known_addresses(table: *RoutingTable, n_ips: usize) !std.ArrayList(std.net.Address) {
+    pub fn select_random_known_addresses(table: *RoutingTable, n_ips: usize) !std.ArrayList(std.net.Address) {
         var addresses = std.ArrayList(std.net.Address).init(default.allocator);
         defer addresses.deinit();
         for (table.records.items) |record| {
@@ -175,21 +176,13 @@ pub const RoutingTable = struct {
         const ip_string = try std.fmt.allocPrint(default.allocator, "{}", .{address});
         if (table.ip_index.get(ip_string)) |record| {
             //known
-            record.last_connect = time.milliTimestamp();
             if (record.red_flags > 1) //drop message
             {
                 std.log.debug("Dropping red-flag message, flags: {}", .{record.red_flags});
                 return false;
             }
         } else {
-            var record = try default.allocator.create(Record);
-            record.* = .{
-                .address = address,
-                .last_connect = time.milliTimestamp(),
-            };
-
-            try table.records.append(record);
-            try table.ip_index.put(ip_string, record);
+            return false;
         }
         return true;
     }

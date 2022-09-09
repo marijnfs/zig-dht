@@ -154,7 +154,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *Se
             if (n_ips <= 0 or n_ips > 64) {
                 return error.TooManyIpsRequested;
             }
-            var addresses = try server.routing.select_known_addresses(n_ips);
+            var addresses = try server.routing.select_random_known_addresses(n_ips);
 
             const return_content: Content = .{ .send_known_ips = addresses.toOwnedSlice() };
             const outbound_message = try build_reply(return_content, envelope, server.id);
