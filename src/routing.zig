@@ -182,7 +182,8 @@ pub const RoutingTable = struct {
                 return false;
             }
         } else {
-            return false;
+            // No record, since we don't have grounds to block we optimistically allow
+            return true;
         }
         return true;
     }
