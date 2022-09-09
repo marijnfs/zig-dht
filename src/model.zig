@@ -20,5 +20,8 @@ pub fn check_hash(hash: ID) bool {
 }
 
 pub fn check_and_add_hash(hash: ID) !bool {
+    if (index.id.is_zero(hash)) {
+        return error.CheckHashIsZero;
+    }
     return (try hashes_seen.getOrPut(hash)).found_existing;
 }

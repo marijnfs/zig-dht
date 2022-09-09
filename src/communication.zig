@@ -132,8 +132,11 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *Se
     switch (content) {
         .broadcast => |broadcast| {
             std.log.debug("got broadcast: '{s}'", .{broadcast});
+
             for (server.broadcast_hooks.items) |callback| {
-                try callback(broadcast, envelope.source_id, address, server);
+                const good = try callback(broadcast, envelope.source_id, address, server);
+                if (!good) //If any of the callbacks returns false, we take that as a rejection of the message
+                    return;
             }
 
             // broadcast further
@@ -142,7 +145,8 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *Se
         .direct_message => |direct_message| {
             std.log.debug("got dm: '{s}'", .{direct_message});
             for (server.direct_message_hooks.items) |callback| {
-                try callback(direct_message, envelope.source_id, address, server);
+                const good = try callback(direct_message, envelope.source_id, address, server);
+                _ = good; //A negative good value means we didn't like the message. We should react to this (remove peer among other things)
             }
         },
         .get_known_ips => |n_ips| {
@@ -173,11 +177,14 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *Se
                 const our_dist = id_.xor(server.id, search_id);
                 const other_dist = id_.xor(finger.id, search_id);
 
+                // If we are closest, or we don't have any fingers to search, we send ourselves
                 if (finger.is_zero() or id_.less(our_dist, other_dist)) {
                     we_are_closest = true;
                 } else {
                     try server.job_queue.enqueue(.{ .send_message = .{ .target = .{ .address = finger.address }, .payload = .{ .envelope = envelope }, .public = find.public } });
                 }
+            } else {
+                std.log.debug("Couldn't find any closest id to: {}", .{hex(search_id[0..8])});
             }
 
             if (we_are_closest) {
