@@ -23,7 +23,7 @@ pub fn JobQueue(comptime Job: type, comptime Context: type) type {
         pub fn enqueue(job_queue: *@This(), job: Job) !void {
             const job_ptr = try default.allocator.create(Job);
             job_ptr.* = job;
-            // std.log.debug("queuing job: {}\n", .{job});
+
             try job_queue.queue.push(job_ptr);
         }
 

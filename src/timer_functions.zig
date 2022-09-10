@@ -39,6 +39,8 @@ pub fn sync_finger_table_with_routing(server: *Server) !void {
             if (!id_.is_equal(last_id, record.id)) {
                 node.id = record.id;
                 node.address = record.address;
+            } else {
+                node.id = id_.zeroes();
             }
             last_id = record.id;
         }
@@ -54,6 +56,8 @@ pub fn sync_finger_table_with_routing(server: *Server) !void {
             if (!id_.is_equal(last_id, record.id)) {
                 node.id = record.id;
                 node.address = record.address;
+            } else {
+                node.id = id_.zeroes();
             }
             last_id = record.id;
         }
@@ -103,16 +107,4 @@ pub fn search_finger_table(server: *Server) !void {
             try communication.enqueue_envelope(content, .{ .id = id_.zeroes() }, server);
         }
     }
-}
-
-pub fn count_connections() usize {
-    var n_connections = default.server.outgoing_connections.count();
-
-    // Also count the soon to be connections
-    for (default.server.job_queue.queue.slice()) |job_ptr| {
-        if (job_ptr.* == .connect) {
-            n_connections += 1;
-        }
-    }
-    return n_connections;
 }
