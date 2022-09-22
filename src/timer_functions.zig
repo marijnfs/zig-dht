@@ -28,11 +28,10 @@ pub fn sync_finger_table_with_routing(server: *Server) !void {
         std.log.debug("Routing entry: {}", .{kv});
     }
 
-    var it = server.finger_table.iterator();
-
     var id_set = std.AutoHashMap(ID, bool).init(index.default.allocator);
     defer id_set.deinit();
 
+    var it = server.finger_table.iterator();
     while (it.next()) |finger| {
         const id = finger.key_ptr.*;
         const node = finger.value_ptr;

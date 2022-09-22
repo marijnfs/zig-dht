@@ -34,13 +34,13 @@ pub fn JobQueue(comptime Job: type, comptime Context: type) type {
         pub fn job_loop(job_queue: *@This()) !void {
             while (true) {
                 if (job_queue.queue.pop()) |job| {
-                    nosuspend {
-                        // std.log.debug("Work: {s}", .{@tagName(job)});
-                        job.work(job_queue, job_queue.context) catch |e| {
-                            std.log.warn("Work Error: {}", .{e});
-                        };
-                        default.allocator.destroy(job);
-                    }
+                    // nosuspend {
+                    // std.log.debug("Work: {s}", .{@tagName(job)});
+                    job.work(job_queue, job_queue.context) catch |e| {
+                        std.log.warn("Work Error: {}", .{e});
+                    };
+                    default.allocator.destroy(job);
+                    // }
                 } else {
                     //sleep
                     std.time.sleep(1 * std.time.ns_per_ms);
