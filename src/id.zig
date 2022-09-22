@@ -28,6 +28,7 @@ pub fn xor_bitpos(id: ID, bit: usize) ID {
 
     // convert to bit index
     const bit_id: u3 = @intCast(u3, 7 - bit_position);
+    // const bit_id: u3 = bit_position;
 
     var new_id = id;
     new_id[byte_id] = id[byte_id] ^ (@as(u8, 1) << bit_id); //xor byte with bit in correct place

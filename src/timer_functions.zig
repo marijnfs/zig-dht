@@ -29,22 +29,29 @@ pub fn sync_finger_table_with_routing(server: *Server) !void {
     }
 
     var it = server.finger_table.iterator();
-    var last_id = id_.zeroes();
+
+    var id_set = std.AutoHashMap(ID, bool).init(index.default.allocator);
+    defer id_set.deinit();
+
     while (it.next()) |finger| {
         const id = finger.key_ptr.*;
         const node = finger.value_ptr;
 
         const require_public = false;
         if (server.routing.get_closest_active_record(id, require_public)) |record| {
-            if (!id_.is_equal(last_id, record.id)) {
+            if (id_set.get(record.id)) |_| {
+                node.id = id_.zeroes();
+            } else {
+                try id_set.put(record.id, true);
+
                 node.id = record.id;
                 node.address = record.address;
-            } else {
-                node.id = id_.zeroes();
             }
-            last_id = record.id;
         }
     }
+
+    var id_set_public = std.AutoHashMap(ID, bool).init(index.default.allocator);
+    defer id_set_public.deinit();
 
     var it_public = server.public_finger_table.iterator();
     while (it_public.next()) |finger| {
@@ -53,13 +60,14 @@ pub fn sync_finger_table_with_routing(server: *Server) !void {
 
         const require_public = true;
         if (server.routing.get_closest_active_record(id, require_public)) |record| {
-            if (!id_.is_equal(last_id, record.id)) {
+            if (id_set_public.get(record.id)) |_| {
+                node.id = id_.zeroes();
+            } else {
+                try id_set_public.put(record.id, true);
+
                 node.id = record.id;
                 node.address = record.address;
-            } else {
-                node.id = id_.zeroes();
             }
-            last_id = record.id;
         }
     }
 }
