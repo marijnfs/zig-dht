@@ -37,7 +37,8 @@ pub var rng = std.rand.DefaultPrng.init(0);
 pub const hex = std.fmt.fmtSliceHexLower;
 
 pub const default = struct {
-    pub const allocator = gpa.allocator();
+    // pub const allocator = gpa.allocator();
+    pub const allocator = std.heap.page_allocator;
 
     // Main server instance
     pub const target_connections = 8;

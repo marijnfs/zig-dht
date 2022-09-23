@@ -60,6 +60,9 @@ pub fn sync_finger_table_with_routing(server: *Server) !void {
     }
     id_set.clearRetainingCapacity();
 
+    var id_set_public = std.AutoHashMap(ID, bool).init(index.default.allocator);
+    defer id_set_public.deinit();
+
     var it_public = server.public_finger_table.iterator();
     while (it_public.next()) |finger| {
         const id = finger.key_ptr.*;

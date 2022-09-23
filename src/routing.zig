@@ -17,7 +17,7 @@ const Record = struct {
     last_connect: i64 = 0,
     public: bool = false,
 
-    fn active(record: *Record, milliThreshold: usize) bool {
+    fn active(record: *Record, milliThreshold: isize) bool {
         return time.milliTimestamp() - record.last_connect < milliThreshold;
     }
 
@@ -53,7 +53,7 @@ pub const RoutingTable = struct {
     }
 
     pub fn get_closest_active_record(table: *RoutingTable, id: ID, require_public: bool) ?Record {
-        var closest_record: ?Record = null;
+        var closest_record: Record = undefined;
         var closest_distance = id_.ones();
 
         for (table.records.items) |record| {
@@ -114,6 +114,16 @@ pub const RoutingTable = struct {
 
         if (table.ip_index.get(ip_string)) |record| {
             record.last_connect = time.milliTimestamp();
+        }
+    }
+
+    pub fn summarize(table: *RoutingTable, writer: anytype) !void {
+        for (table.records.items) |record| {
+            try writer.print("rec id:{} addr{} active:{}", .{
+                hex(record.id[0..8]),
+                record.address,
+                record.active(20000),
+            });
         }
     }
 
@@ -185,12 +195,6 @@ pub const RoutingTable = struct {
             return true;
         }
         return true;
-    }
-
-    pub fn summarize(table: *RoutingTable, writer: anytype) !void {
-        for (table.records.items) |rec| {
-            try writer.print("route id:{} addr:{} act:{}\n", .{ hex(rec.id[0..8]), rec.address, rec.active(20000) });
-        }
     }
 };
 
