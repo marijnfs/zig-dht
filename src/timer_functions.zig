@@ -10,12 +10,23 @@ const Server = index.Server;
 const ID = index.ID;
 const hex = index.hex;
 
-pub fn bootstrap_connect_seen(server: *Server) !void {
+// network discovery, simply ping all seen addresses
+// Todo, this is quite brute force, make smarter
+pub fn ping_addresses_seen(server: *Server) !void {
     var it = server.routing.addresses_seen.valueIterator();
     while (it.next()) |address| {
         try communication.enqueue_envelope(.{ .ping = .{ .public = server.public } }, .{ .address = address.* }, server);
 
         // try server.job_queue.enqueue(.{ .connect = .{ .address = address.*, .public = true } });
+    }
+}
+
+pub fn discover_addresses_seen(server: *Server) !void {
+    var it = server.finger_table.iterator();
+    while (it.next()) |finger| {
+        const node = finger.value_ptr;
+        if (!node.is_zero())
+            try communication.enqueue_envelope(.{ .get_known_ips = 8 }, .{ .address = node.address }, server);
     }
 }
 
@@ -28,23 +39,26 @@ pub fn sync_finger_table_with_routing(server: *Server) !void {
         std.log.debug("Routing entry: {}", .{kv});
     }
 
+    var id_set = std.AutoHashMap(ID, bool).init(default.allocator);
+    defer id_set.deinit();
+
     var it = server.finger_table.iterator();
-    var last_id = id_.zeroes();
+
     while (it.next()) |finger| {
         const id = finger.key_ptr.*;
         const node = finger.value_ptr;
 
         const require_public = false;
         if (server.routing.get_closest_active_record(id, require_public)) |record| {
-            if (!id_.is_equal(last_id, record.id)) {
+            if ((try id_set.getOrPut(record.id)).found_existing) {
+                node.id = id_.zeroes();
+            } else {
                 node.id = record.id;
                 node.address = record.address;
-            } else {
-                node.id = id_.zeroes();
             }
-            last_id = record.id;
         }
     }
+    id_set.clearRetainingCapacity();
 
     var it_public = server.public_finger_table.iterator();
     while (it_public.next()) |finger| {
@@ -53,13 +67,12 @@ pub fn sync_finger_table_with_routing(server: *Server) !void {
 
         const require_public = true;
         if (server.routing.get_closest_active_record(id, require_public)) |record| {
-            if (!id_.is_equal(last_id, record.id)) {
+            if ((try id_set.getOrPut(record.id)).found_existing) {
+                node.id = id_.zeroes();
+            } else {
                 node.id = record.id;
                 node.address = record.address;
-            } else {
-                node.id = id_.zeroes();
             }
-            last_id = record.id;
         }
     }
 }

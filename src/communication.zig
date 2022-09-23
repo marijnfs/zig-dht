@@ -115,6 +115,8 @@ pub fn enqueue_envelope(content: Content, target: Target, server: *Server) !void
 
 fn build_reply(content: Content, envelope: Envelope, server_id: ID) !OutboundMessage {
     const reply = Envelope{ .target_id = envelope.source_id, .source_id = server_id, .nonce = envelope.nonce, .content = content };
+    if (id_.is_zero(envelope.source_id))
+        return error.ZeroId;
 
     const outbound_message = OutboundMessage{
         .target = .{ .id = envelope.source_id },
@@ -148,18 +150,6 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *Se
                 const good = try callback(direct_message, envelope.source_id, address, server);
                 _ = good; //A negative good value means we didn't like the message. We should react to this (remove peer among other things)
             }
-        },
-        .get_known_ips => |n_ips| {
-            // sanity check n_ips
-            if (n_ips <= 0 or n_ips > 64) {
-                return error.TooManyIpsRequested;
-            }
-            var addresses = try server.routing.select_random_known_addresses(n_ips);
-
-            const return_content: Content = .{ .send_known_ips = addresses.toOwnedSlice() };
-            const outbound_message = try build_reply(return_content, envelope, server.id);
-
-            try server.job_queue.enqueue(.{ .send_message = outbound_message });
         },
         .find => |find| {
             // requester is trying to find a node closest to the search_id
@@ -236,6 +226,18 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *Se
             // our_ip.setPort(server.address.getPort()); // set the port so the address becomes our likely external connection ip
             server.apparent_address = our_ip;
             std.log.debug("apparent_address: {?}", .{server.apparent_address});
+        },
+        .get_known_ips => |n_ips| {
+            // sanity check n_ips
+            if (n_ips <= 0 or n_ips > 64) {
+                return error.TooManyIpsRequested;
+            }
+            var addresses = try server.routing.select_random_known_addresses(n_ips);
+
+            const return_content: Content = .{ .send_known_ips = addresses.toOwnedSlice() };
+            const outbound_message = try build_reply(return_content, envelope, server.id);
+
+            try server.job_queue.enqueue(.{ .send_message = outbound_message });
         },
         .send_known_ips => |known_ips| {
             std.log.debug("adding n 'known' addresses: {}", .{known_ips.len});

@@ -26,7 +26,8 @@ pub const Server = struct {
         ping_finger_table_timer: i64 = 1000, //time in ms
         sync_finger_table_timer: i64 = 4000,
         search_finger_table_timer: i64 = 5000,
-        bootstrap_timer: i64 = 10000,
+        ping_addresses_seen_timer: i64 = 10000,
+        discover_addresses_seen_timer: i64 = 10000,
         public: bool,
     };
 
@@ -90,7 +91,8 @@ pub const Server = struct {
         try server.timer_thread.add_timer(config.ping_finger_table_timer, timer_functions.ping_finger_table, true);
         try server.timer_thread.add_timer(config.sync_finger_table_timer, timer_functions.sync_finger_table_with_routing, true);
         try server.timer_thread.add_timer(config.search_finger_table_timer, timer_functions.search_finger_table, true);
-        try server.timer_thread.add_timer(config.bootstrap_timer, timer_functions.bootstrap_connect_seen, true);
+        try server.timer_thread.add_timer(config.ping_addresses_seen_timer, timer_functions.ping_addresses_seen, true);
+        try server.timer_thread.add_timer(config.discover_addresses_seen_timer, timer_functions.discover_addresses_seen, true);
     }
 
     pub fn wait(server: *Server) !void {

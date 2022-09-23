@@ -70,8 +70,6 @@ pub const RoutingTable = struct {
                 closest_record = record.*;
             }
         }
-        if (id_.is_ones(closest_distance))
-            return null;
 
         return closest_record;
     }
@@ -110,6 +108,15 @@ pub const RoutingTable = struct {
         try table.ip_index.put(ip_string, record);
     }
 
+    pub fn update_ip(table: *RoutingTable, addr: std.net.Address) !void {
+        const ip_string = try std.fmt.allocPrint(default.allocator, "{}", .{addr});
+        defer default.allocator.free(ip_string);
+
+        if (table.ip_index.get(ip_string)) |record| {
+            record.last_connect = time.milliTimestamp();
+        }
+    }
+
     pub fn get_addresses_seen(table: *RoutingTable) ![]std.net.Address {
         var addresses = try default.allocator.alloc(std.net.Address, table.addresses_seen.count());
         var it = table.addresses_seen.valueIterator();
@@ -132,20 +139,12 @@ pub const RoutingTable = struct {
 
     pub fn select_random_known_addresses(table: *RoutingTable, n_ips: usize) !std.ArrayList(std.net.Address) {
         var addresses = std.ArrayList(std.net.Address).init(default.allocator);
-        defer addresses.deinit();
-        for (table.records.items) |record| {
-            try addresses.append(record.address);
-        }
 
-        var selection = try utils.random_selection(n_ips, addresses.items.len);
+        var selection = try utils.random_selection(n_ips, table.records.items.len);
         defer default.allocator.free(selection);
 
-        var ips = try default.allocator.alloc(std.net.Address, selection.len);
-
-        var i: usize = 0;
         for (selection) |s| {
-            ips[i] = addresses.items[s];
-            i += 1;
+            try addresses.append(table.records.items[s].address);
         }
 
         return addresses;
@@ -186,6 +185,12 @@ pub const RoutingTable = struct {
             return true;
         }
         return true;
+    }
+
+    pub fn summarize(table: *RoutingTable, writer: anytype) !void {
+        for (table.records.items) |rec| {
+            try writer.print("route id:{} addr:{} act:{}\n", .{ hex(rec.id[0..8]), rec.address, rec.active(20000) });
+        }
     }
 };
 
