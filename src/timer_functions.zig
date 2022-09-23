@@ -31,8 +31,6 @@ pub fn discover_addresses_seen(server: *Server) !void {
 }
 
 pub fn sync_finger_table_with_routing(server: *Server) !void {
-    //TODO: Make sure n_active_connections keeps 'last connect' into account
-    // Needs heartbeat
     std.log.debug("Syncing with routing, current active: {}", .{server.finger_table.n_active_connections()});
 
     for (server.routing.records.items) |kv| {
@@ -44,37 +42,34 @@ pub fn sync_finger_table_with_routing(server: *Server) !void {
 
     var it = server.finger_table.iterator();
 
-    while (it.next()) |finger| {
-        const id = finger.key_ptr.*;
-        const node = finger.value_ptr;
+    while (it.next()) |kv| {
+        const key = kv.key_ptr.*;
+        const finger = kv.value_ptr;
 
         const require_public = false;
-        if (server.routing.get_closest_active_record(id, require_public)) |record| {
+        if (server.routing.get_closest_active_record(key, require_public)) |record| {
             if ((try id_set.getOrPut(record.id)).found_existing) {
-                node.id = id_.zeroes();
+                finger.id = id_.zeroes();
             } else {
-                node.id = record.id;
-                node.address = record.address;
+                finger.id = record.id;
+                finger.address = record.address;
             }
         }
     }
     id_set.clearRetainingCapacity();
 
-    var id_set_public = std.AutoHashMap(ID, bool).init(index.default.allocator);
-    defer id_set_public.deinit();
-
     var it_public = server.public_finger_table.iterator();
-    while (it_public.next()) |finger| {
-        const id = finger.key_ptr.*;
-        const node = finger.value_ptr;
+    while (it_public.next()) |kv| {
+        const key = kv.key_ptr.*;
+        const finger = kv.value_ptr;
 
         const require_public = true;
-        if (server.routing.get_closest_active_record(id, require_public)) |record| {
+        if (server.routing.get_closest_active_record(key, require_public)) |record| {
             if ((try id_set.getOrPut(record.id)).found_existing) {
-                node.id = id_.zeroes();
+                finger.id = id_.zeroes();
             } else {
-                node.id = record.id;
-                node.address = record.address;
+                finger.id = record.id;
+                finger.address = record.address;
             }
         }
     }

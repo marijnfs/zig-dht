@@ -53,7 +53,7 @@ pub const RoutingTable = struct {
     }
 
     pub fn get_closest_active_record(table: *RoutingTable, id: ID, require_public: bool) ?Record {
-        var closest_record: Record = undefined;
+        var closest_record: ?Record = null;
         var closest_distance = id_.ones();
 
         for (table.records.items) |record| {
@@ -119,7 +119,7 @@ pub const RoutingTable = struct {
 
     pub fn summarize(table: *RoutingTable, writer: anytype) !void {
         for (table.records.items) |record| {
-            try writer.print("rec id:{} addr{} active:{}", .{
+            try writer.print("rec id:{} addr{} active:{}\n", .{
                 hex(record.id[0..8]),
                 record.address,
                 record.active(20000),
