@@ -247,7 +247,8 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *Se
                 try server.routing.add_address_seen(addr);
             }
         },
-        .punch_suggest => |punch_suggest| { // Someone is requesting a punch connection
+        .punch_suggest => |punch_suggest| {
+            // Someone is requesting a punch connection
             // send accept invitation
             // this is also an opportunity to possibly suggest another public ip
             try enqueue_envelope(.{
@@ -291,14 +292,13 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *Se
                         .punch_address = stored_address,
                     },
                 }, .{ .address = address }, server);
-
                 _ = server.punch_map.remove(nonce);
             } else {
                 try server.punch_map.put(nonce, address);
             }
         },
         .punch_reply => |punch_reply| {
-            try server.job_queue.enqueue(.{ .connect = .{ .address = punch_reply.punch_address, .public = true } }); //we pretend for a moment the address is public, as the port should be open to us
+            try enqueue_envelope(.{ .ping = .{ .public = server.public } }, .{ .address = punch_reply.punch_address }, server);
         },
     }
 }

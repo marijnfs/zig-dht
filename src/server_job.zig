@@ -47,6 +47,8 @@ pub const ServerJob = union(enum) {
                     if (server.public_finger_table.get_closest_active_finger(server.id)) |finger| //todo, doesn't need to be closest to me, this was just convenient. Random is maybe better
                     {
                         try communication.enqueue_envelope(.{ .punch_suggest = .{ .suggested_public_address = finger.address, .nonce = id_.rand_id() } }, .{ .address = connect.address }, server);
+                    } else {
+                        std.log.debug("Don't have any public fingers, can't connect to private", .{});
                     }
                 }
             },

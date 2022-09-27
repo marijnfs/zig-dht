@@ -90,7 +90,7 @@ pub fn ping_finger_table(server: *Server) !void {
                 std.log.debug("pinging finger: {} {}", .{ index.hex(&id), node });
                 const address = node.address;
 
-                try communication.enqueue_envelope(.{ .ping = .{ .public = server_.public } }, .{ .address = address }, server_);
+                try server_.job_queue.enqueue(.{ .connect = .{ .address = address, .public = server_.public } });
             }
         }
     }.f;
