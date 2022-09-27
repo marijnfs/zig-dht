@@ -33,6 +33,7 @@ pub const RoutingTable = struct {
     records: std.ArrayList(*Record),
     ip_index: std.StringHashMap(*Record),
     id_index: std.AutoHashMap(ID, *Record),
+    back_routes: std.AutoHashMap(ID, std.net.Address),
 
     pub fn init(id: ID) !*RoutingTable {
         var table = try default.allocator.create(RoutingTable);
@@ -43,6 +44,7 @@ pub const RoutingTable = struct {
             .records = std.ArrayList(*Record).init(default.allocator),
             .ip_index = std.StringHashMap(*Record).init(default.allocator),
             .id_index = std.AutoHashMap(ID, *Record).init(default.allocator),
+            .back_routes = std.AutoHashMap(ID, std.net.Address).init(default.allocator),
         };
 
         return table;
@@ -119,10 +121,11 @@ pub const RoutingTable = struct {
 
     pub fn summarize(table: *RoutingTable, writer: anytype) !void {
         for (table.records.items) |record| {
-            try writer.print("rec id:{} addr{} active:{}\n", .{
+            try writer.print("rec id:{} addr{} active:{} pub:{}\n", .{
                 hex(record.id[0..8]),
                 record.address,
                 record.active(20000),
+                record.public,
             });
         }
     }
@@ -158,6 +161,14 @@ pub const RoutingTable = struct {
         }
 
         return addresses;
+    }
+
+    pub fn add_backroute(table: *RoutingTable, id: ID, src_address: std.net.Address) !void {
+        try table.back_routes.put(id, src_address);
+    }
+
+    pub fn get_backroute(table: *RoutingTable, id: ID) ?std.net.Address {
+        return table.back_routes.get(id);
     }
 
     pub fn get_random_active_record(table: *RoutingTable) !?Record {

@@ -4,6 +4,7 @@ const std = @import("std");
 const index = @import("index.zig");
 const default = index.default;
 const ID = index.ID;
+const Hash = index.Hash;
 
 pub fn unicodeToInt32(unicode: u21) !u32 {
     var code: u32 = 0;
@@ -14,6 +15,16 @@ pub fn unicodeToInt32(unicode: u21) !u32 {
 pub fn calculate_hash(data: []const u8) ID {
     var result: ID = undefined;
     std.crypto.hash.Blake3.hash(data, result[0..], .{});
+    return result;
+}
+
+pub fn calculate_hash_multiple(data_list: [][]const u8) Hash {
+    var hasher = std.crypto.hash.Blake3.init(.{});
+    for (data_list) |data| {
+        hasher.update(data);
+    }
+    var result: Hash = undefined;
+    hasher.final(result[0..]);
     return result;
 }
 

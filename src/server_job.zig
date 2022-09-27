@@ -13,6 +13,7 @@ const utils = index.utils;
 const serial = index.serial;
 const hash = index.hash;
 const model = index.model;
+const hex = index.hex;
 
 const Server = index.Server;
 
@@ -66,7 +67,7 @@ pub const ServerJob = union(enum) {
                         const serial_message = try serial.serialise_alloc(envelope, default.allocator);
                         defer default.allocator.free(serial_message);
                         const hash_message = try hash.append_hash(serial_message);
-                        std.log.debug("send message with hash of: {}", .{index.hex(&hash_message.hash)});
+                        std.log.debug("send message with hash of: {}", .{hex(&hash_message.hash)});
 
                         try model.add_hash(hash_message.hash);
 
@@ -81,6 +82,12 @@ pub const ServerJob = union(enum) {
                         //direct match
                         if (server.routing.id_index.get(id)) |record| {
                             try server.socket.sendTo(record.address, data);
+                            return;
+                        }
+
+                        //backroute match
+                        if (server.routing.get_backroute(id)) |addr| {
+                            try server.socket.sendTo(addr, data);
                             return;
                         }
 
@@ -106,7 +113,7 @@ pub const ServerJob = union(enum) {
                             try server.socket.sendTo(finger.address, data);
                         } else {
                             //failed to find any valid record
-                            std.log.debug("Failed to find any finger for id {}", .{index.hex(&id)});
+                            std.log.debug("Failed to find any finger for id {}", .{hex(&id)});
                         }
                     },
                 }
@@ -122,6 +129,10 @@ pub const ServerJob = union(enum) {
 
                 var reader = std.io.fixedBufferStream(hash_slice.slice).reader();
                 var envelope = try serial.deserialise(communication.Envelope, reader, default.allocator);
+
+                // back routing
+                try server.routing.add_backroute(envelope.source_id, inbound_message.from);
+
                 std.log.debug("got msg:{}", .{envelope.content});
 
                 if (id_.is_zero(envelope.target_id) or id_.is_equal(envelope.target_id, server.id)) {

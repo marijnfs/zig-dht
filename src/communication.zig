@@ -7,6 +7,8 @@ const utils = index.utils;
 const c = index.c;
 const id_ = index.id;
 const ID = index.ID;
+const Hash = index.Hash;
+
 const Server = index.server.Server;
 const hex = index.hex;
 // Message contents
@@ -21,7 +23,7 @@ pub const Content = union(enum) {
         public: bool, //indicated the responding server is public
     },
     get_known_ips: usize,
-    send_known_ips: []std.net.Address,
+    known_ips: []std.net.Address,
     find: struct {
         id: ID,
         inclusive: u8 = 0,
@@ -64,6 +66,18 @@ pub const Envelope = struct {
     pub fn format(envelope: *const Envelope, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) !void {
         try writer.print("Envelope, hash:{}, tgt: {}, src: {}, nonce:{} = {}", .{ hex(&envelope.hash), hex(&envelope.source_id), hex(&envelope.target_id), envelope.nonce, envelope.content });
     }
+
+    // pub fn verify_hash(envelope: *const Envelope) bool {
+
+    // }
+
+    pub fn update_hash(envelope: *Envelope) void {
+        envelope.hash = envelope.calculate_hash();
+    }
+
+    pub fn calculate_hash(envelope: *const Envelope) Hash {
+        return utils.calculate_hash_multiple(&.{ &envelope.target_id, &envelope.source_id, std.mem.asBytes(&envelope.nonce) });
+    }
 };
 
 const Target = union(enum) {
@@ -86,7 +100,7 @@ pub const InboundMessage = struct {
 };
 
 pub fn build_envelope(content: Content, target: Target, server: *Server) index.communication.Envelope {
-    const envelope = switch (target) {
+    var envelope = switch (target) {
         .id => |id| Envelope{
             .source_id = server.id,
             .target_id = id,
@@ -99,6 +113,7 @@ pub fn build_envelope(content: Content, target: Target, server: *Server) index.c
             .nonce = index.id.get_guid(),
         },
     };
+    envelope.update_hash();
     return envelope;
 }
 
@@ -174,30 +189,31 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *Se
                     try server.job_queue.enqueue(.{ .send_message = .{ .target = .{ .address = finger.address }, .payload = .{ .envelope = envelope }, .public = find.public } });
                 }
             } else {
-                std.log.debug("Couldn't find any closest id to: {}", .{hex(search_id[0..8])});
+                std.log.info("Couldn't find any closest id to: {}", .{hex(search_id[0..8])});
             }
 
             if (we_are_closest) {
                 const return_content: Content = .{ .found = .{ .id = server.id, .address = server.apparent_address, .public = server.public, .public_requested = find.public } };
-                std.log.debug("Returning self {?}", .{server.apparent_address});
                 const outbound_message = try build_reply(return_content, envelope, server.id);
+                std.log.info("Returning self {?} to {}", .{ server.apparent_address, hex(outbound_message.target.id[0..8]) });
                 try server.job_queue.enqueue(.{ .send_message = outbound_message });
             }
         },
         .found => |found| {
-            std.log.debug("found result: {} {?}", .{ hex(&found.id), found.address });
+            std.log.info("found result: {} {?}", .{ hex(found.id[0..8]), found.address });
 
             const id = found.id;
 
             if (found.address) |addr| {
-                if (found.public_requested and found.public) {
-                    std.log.debug("update public: {} {}", .{ index.hex(&id), addr });
-                    try server.public_finger_table.update_closest_finger(id, addr);
-                } else {
-                    std.log.debug("update private: {} {}", .{ index.hex(&id), addr });
+                try server.routing.update_ip_id_pair(id, addr, found.public);
+                // if (found.public_requested and found.public) {
+                //     std.log.debug("update public: {} {}", .{ index.hex(&id), addr });
+                //     try server.public_finger_table.update_closest_finger(id, addr);
+                // } else {
+                //     std.log.debug("update private: {} {}", .{ index.hex(&id), addr });
 
-                    try server.finger_table.update_closest_finger(id, addr);
-                }
+                //     try server.finger_table.update_closest_finger(id, addr);
+                // }
             } else {
                 std.log.debug("found, but got no address", .{});
             }
@@ -234,13 +250,13 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *Se
             }
             var addresses = try server.routing.select_random_known_addresses(n_ips);
 
-            const return_content: Content = .{ .send_known_ips = addresses.toOwnedSlice() };
+            const return_content: Content = .{ .known_ips = addresses.toOwnedSlice() };
             const outbound_message = try build_reply(return_content, envelope, server.id);
 
             try server.job_queue.enqueue(.{ .send_message = outbound_message });
         },
-        .send_known_ips => |known_ips| {
-            std.log.debug("adding n 'known' addresses: {}", .{known_ips.len});
+        .known_ips => |known_ips| {
+            std.log.info("adding n 'known' addresses: {}", .{known_ips.len});
 
             defer default.allocator.free(known_ips);
             for (known_ips) |addr| {
