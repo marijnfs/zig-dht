@@ -163,7 +163,7 @@ pub fn process_message(envelope: Envelope, address: std.net.Address, server: *Se
 
             const finger_table = if (find.public) server.public_finger_table else server.finger_table;
 
-            if (finger_table.get_closest_finger(search_id)) |finger| {
+            if (finger_table.get_closest_active_finger(search_id)) |finger| {
                 const our_dist = id_.xor(server.id, search_id);
                 const other_dist = id_.xor(finger.id, search_id);
 
