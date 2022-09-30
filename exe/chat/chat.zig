@@ -1,23 +1,27 @@
 const dht = @import("dht");
-const clap = @import("clap");
+const clap = @import("zig-clap");
 const std = @import("std");
 
 const ID = dht.ID;
+const hex = dht.hex;
 
 const debug = std.debug;
 const io = std.io;
 
+const allocator = std.heap.page_allocator;
+var username: []const u8 = undefined;
+
 pub fn main() !void {
-    // const allocator = std.heap.page_allocator;
 
     // Setup server
     const params = comptime clap.parseParamsComptime(
         \\-h, --help                    Display this help and exit.
-        \\--ip <str>                   Display this help and exit.
-        \\--port <u16>                   Display this help and exit.
-        \\--remote_ip <str>                   Display this help and exit.
-        \\--remote_port <u16>                   Display this help and exit.
-        \\-n, --name                   UserName
+        \\-i, --ip <str>                  
+        \\-p, --port <u16>                
+        \\--remote_ip <str>            
+        \\--remote_port <u16>          Remote port
+        \\-u, --username  <str>        UserName
+        \\-p, --public                 This is a public node
     );
 
     var diag = clap.Diagnostic{};
@@ -34,13 +38,11 @@ pub fn main() !void {
     if (args.help)
         return clap.help(std.io.getStdErr().writer(), clap.Help, &params, .{});
 
+    username = args.username orelse return error.MissingUsername;
+
     try dht.init();
     const address = try std.net.Address.parseIp(args.ip.?, args.port.?);
     var id = dht.id.rand_id();
-    if (args.zero_id) {
-        id = dht.id.zeroes();
-        id[0] = 1;
-    }
 
     var server = try dht.server.Server.init(address, id, .{ .public = args.public });
     defer server.deinit();
@@ -53,6 +55,8 @@ pub fn main() !void {
 
     // try server.add_direct_message_hook(direct_message_hook);
     try server.add_broadcast_hook(broadcast_hook);
+
+    _ = try std.Thread.spawn(.{}, read_and_send, .{server});
 
     try server.start();
     try server.wait();
@@ -72,63 +76,45 @@ fn broadcast_hook(buf: []const u8, src_id: ID, src_address: std.net.Address, ser
 
     // Verify the block
     switch (message) {
-        .block => |block| {
-            const t = time.milliTimestamp();
-            if (t - farmer_settings.accept_delay > block.total_embargo and block.total_difficulty > chain_head.total_difficulty) {
-                try debug_msg(
-                    try std.fmt.allocPrint(allocator, "t{} id:{} hash:{} other:{}\n", .{
-                        std.time.milliTimestamp(),
-                        hex(server.id[0..8]),
-                        hex(block.hash[0..8]),
-                        hex(src_id[0..8]),
-                    }),
-                    server,
-                );
-                std.log.debug("block total difficulty: {}, chain head: {}", .{ block.total_difficulty, chain_head.total_difficulty });
-
-                if (block_db.get(block.prev)) |head| {
-                    var block_copy = block;
-                    try block_copy.rebuild(head);
-                    if (!std.mem.eql(u8, std.mem.asBytes(&block), std.mem.asBytes(&block_copy))) {
-                        std.log.warn("Block rebuild failed, rejecting \n{} \n{}", .{ block, block_copy });
-                        return error.FalseRebuild;
-                    }
-                } else {
-                    std.log.debug("Don't have head, accepting blindly", .{}); //TODO: replace with proper syncing method
-                }
-
-                {
-                    std.log.info("Accepting received block", .{});
-                    best_block_mutex.lock();
-                    defer best_block_mutex.unlock();
-
-                    try accept_block(block, server);
-                }
-            } else {
-                try debug_msg(
-                    try std.fmt.allocPrint(allocator, "not accepting t{} id:{} hash:{} other:{}\n", .{
-                        std.time.milliTimestamp(),
-                        hex(server.id[0..8]),
-                        hex(block.hash[0..8]),
-                        hex(src_id[0..8]),
-                    }),
-                    server,
-                );
-                std.log.debug("not accepting block {}: from {}, other diff:{} mine diff:{}", .{ hex(block.hash[0..8]), hex(src_id[0..8]), block.total_difficulty, chain_head.total_difficulty });
-            }
+        .msg => |msg| {
+            try std.io.getStdOut().writer().print("{s}: {s}", .{ msg.username, msg.message });
         },
-        .req => {
-            const msg = Api{ .rep = try std.fmt.allocPrint(allocator, "my head {} diff: {}", .{ hex(chain_head.hash[0..8]), chain_head.total_difficulty }) };
-            const send_buf = try dht.serial.serialise_alloc(msg, allocator);
-
-            try server.queue_direct_message(src_id, send_buf);
-            std.log.debug("I {} got req, direct reply", .{hex(server.id[0..8])});
-        },
-        .rep => |rep| {
-            std.log.debug("Got Rep from: {} {s}", .{ hex(src_id[0..8]), rep });
-        },
-        else => {},
     }
 
     return true;
+}
+
+pub fn read_and_send(server: *dht.Server) !void {
+    nosuspend {
+        var stdin = std.io.getStdIn();
+        stdin.intended_io_mode = .blocking;
+        var stdout = std.io.getStdOut();
+        stdout.intended_io_mode = .blocking;
+
+        var buf: [100]u8 = undefined;
+        while (true) {
+            const slice_opt = try stdin.reader().readUntilDelimiterOrEof(buf[0..], '\n');
+            const slice = slice_opt orelse {
+                std.log.debug("Std in ended", .{});
+                break;
+            };
+            std.log.debug("read line", .{});
+
+            // send req broadcast
+            const msg = Api{ .msg = .{
+                .username = username,
+                .message = try allocator.dupe(u8, slice),
+            } };
+            const send_buf = try dht.serial.serialise_alloc(msg, allocator);
+            try server.queue_broadcast(send_buf);
+
+            if (std.mem.eql(u8, slice, "finger")) {
+                try stdout.writeAll("fingers:\n");
+                try server.finger_table.summarize(stdout.writer());
+                try stdout.writeAll("public fingers:\n");
+                try server.public_finger_table.summarize(stdout.writer());
+                try server.routing.summarize(stdout.writer());
+            }
+        }
+    }
 }
