@@ -14,6 +14,9 @@ var username: []const u8 = undefined;
 pub const io_mode = .evented; // use event loop
 
 pub fn main() !void {
+    // Avoid issues with evented stuff
+    var stdout = std.io.getStdOut();
+    stdout.intended_io_mode = .blocking;
 
     // Setup server
     const params = comptime clap.parseParamsComptime(
@@ -72,16 +75,18 @@ const Api = union(enum) {
 };
 
 fn broadcast_hook(buf: []const u8, src_id: ID, src_address: std.net.Address, server: *dht.Server) !bool {
-    std.log.info("broadcast hook", .{});
-    _ = src_address;
-    const message = try dht.serial.deserialise_slice(Api, buf, allocator);
-    std.log.info("id:{} broadcast from:{}", .{ hex(server.id[0..8]), hex(src_id[0..8]) });
+    nosuspend {
+        std.log.info("broadcast hook", .{});
+        _ = src_address;
+        const message = try dht.serial.deserialise_slice(Api, buf, allocator);
+        std.log.info("id:{} broadcast from:{}", .{ hex(server.id[0..8]), hex(src_id[0..8]) });
 
-    // Verify the block
-    switch (message) {
-        .msg => |msg| {
-            try std.io.getStdOut().writer().print("{s}: {s}", .{ msg.username, msg.message });
-        },
+        // Verify the block
+        switch (message) {
+            .msg => |msg| {
+                try std.io.getStdOut().writer().print("{s}: {s}\n", .{ msg.username, msg.message });
+            },
+        }
     }
 
     return true;
