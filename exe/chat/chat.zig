@@ -14,6 +14,8 @@ var username: []const u8 = undefined;
 pub const io_mode = .evented; // use event loop
 
 pub fn main() !void {
+    try std.io.getStdOut().writer().print("Distributed Chan, connecting..\n", .{});
+
     // Setup server
     const params = comptime clap.parseParamsComptime(
         \\-h, --help                    Display this help and exit.
