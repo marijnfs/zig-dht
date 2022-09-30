@@ -11,6 +11,8 @@ const io = std.io;
 const allocator = std.heap.page_allocator;
 var username: []const u8 = undefined;
 
+pub const io_mode = .evented; // use event loop
+
 pub fn main() !void {
 
     // Setup server
