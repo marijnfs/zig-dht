@@ -5,7 +5,7 @@ const std = @import("std");
 const ID = dht.ID;
 const hex = dht.hex;
 
-const debug = std.debug;
+const debug = std.info;
 const io = std.io;
 
 const allocator = std.heap.page_allocator;
@@ -21,7 +21,7 @@ pub fn main() !void {
         \\--remote_ip <str>            
         \\--remote_port <u16>          Remote port
         \\-u, --username  <str>        UserName
-        \\-p, --public                 This is a public node
+        \\--public                 This is a public node
     );
 
     var diag = clap.Diagnostic{};
@@ -70,6 +70,7 @@ const Api = union(enum) {
 };
 
 fn broadcast_hook(buf: []const u8, src_id: ID, src_address: std.net.Address, server: *dht.Server) !bool {
+    std.log.info("broadcast hook", .{});
     _ = src_address;
     const message = try dht.serial.deserialise_slice(Api, buf, allocator);
     std.log.info("id:{} broadcast from:{}", .{ hex(server.id[0..8]), hex(src_id[0..8]) });
