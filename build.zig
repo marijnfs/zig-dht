@@ -6,6 +6,7 @@ pub fn build(b: *std.build.Builder) void {
     // means any target is allowed, and the default is native. Other options
     // for restricting supported target set are available.
     const target = b.standardTargetOptions(.{});
+    b.use_stage1 = true;
 
     // Standard release options allow the person running `zig build` to select
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
@@ -56,7 +57,7 @@ pub fn build(b: *std.build.Builder) void {
         const exe = b.addExecutable("sync", "exe/sync/main.zig");
         exe.addLibPath("/usr/lib/x86_64-linux-gnu");
         exe.addLibPath("/usr/lib64");
-        exe.addPackagePath("args", "ext/zig-args/args.zig");
+        exe.addPackagePath("zig-clap", "ext/zig-clap/clap.zig");
         exe.addPackagePath("dht", "src/index.zig");
         exe.setTarget(target);
         exe.setBuildMode(mode);

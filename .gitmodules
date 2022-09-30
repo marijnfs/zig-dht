@@ -1,3 +1,6 @@
 [submodule "ext/notcurses"]
 	path = ext/notcurses
 	url = https://github.com/dankamongmen/notcurses.git
+[submodule "ext/zig-clap"]
+	path = ext/zig-clap
+	url = https://github.com/Hejsil/zig-clap.git
